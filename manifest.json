@@ -4,30 +4,22 @@
 	"name": "Panopto Video Downloader",
 	"version": "1.4",
 	"description": "Download video from panopto.eu and panopto.com sites.",
-	"manifest_version": 2,
+	"manifest_version": 3,
 
 	"background": {
-		"scripts": ["background.js"]
+		"service_worker": "background.js"
 	},
 	"icons": {
         "16": "icon16.png",
         "48": "icon48.png",
         "128": "icon128.png"
     },
-	"browser_action": {
+	"action": {
 		"default_icon": "download-icon-green.png"
 	},
-	"content_scripts": [
-		{
-			"matches": [
-			"*://*.panopto.eu/*",
-			"*://*.panopto.com/*"
-			],
-			"js": ["payload.js"]
-		}
-	],
 	"permissions": [
 		"activeTab",
-		"downloads"
+		"downloads",
+		"scripting"
 	]
 }
