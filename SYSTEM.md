@@ -14,7 +14,7 @@ The project is a standard Google Chrome extension built with Javascript and HTML
 
 ### Assets
 * **`icon16.png`, `icon48.png`, `icon128.png`**: The application icons used in the Chrome Web Store and browser toolbar.
-* **`download-icon-green.png`**: The default icon displayed for the browser action.
+* **`icon.png`**: The default icon displayed for the browser action.
 
 ---
 
@@ -29,16 +29,20 @@ The system operates based on user interaction with the extension icon when a val
 4. **Script Injection:** If the URL is valid, `background.js` programmatically injects the `payload.js` script into the active tab using `chrome.scripting.executeScript`.
 
 ### Data Extraction Flow (Injected Script)
-1. **Script Execution:** `payload.js` executes immediately upon injection.
-2. **Metadata Parsing:** The script searches the page's DOM for `<meta>` tags.
-    * **Video URL:** Looks for a `<meta>` tag with `name="twitter:player:stream"`. It extracts the `content` attribute and splits it by `?` to remove any query parameters.
-    * **Video Title:** Looks for a `<meta>` tag with `property="og:title"`. It extracts the `content` attribute to use as the file name.
-3. **String Sanitization:** The extracted title string is sanitized using a regular expression to ensure it is a valid filename by replacing slashes (`/`), spaces (` `), and colons (`:`) with underscores. The `.mp4` extension is appended.
-4. **Result Return:** An object containing the extracted URL and filename is synchronously returned to the service worker.
+1. **Script Execution:** `payload.js` executes immediately upon injection into the `MAIN` execution world.
+2. **Metadata Parsing:** The script executes a 7-step progressive fallback strategy to guarantee stream extraction:
+    * **Step 1: Title Extraction:** Grabs the video name from `<meta property="og:title">` or `document.title`, sanitizing it via Regex.
+    * **Step 2: Global Variables:** Reads Panopto's internal Javascript objects (`viewerData`, `viewerState`, `Panopto.viewer`) for the `PodcastStream.StreamUrl`.
+    * **Step 3: Legacy Meta Tag:** Checks `<meta name="twitter:player:stream">` if it exists.
+    * **Step 4: API Brute-force:** Issues `HEAD` requests to 4 known Podcast API endpoints (`/Social/`, `/Syndication/`, etc.) with user cookies to verify valid `.mp4` URLs.
+    * **Step 5: DeliveryInfo API:** Sends an authenticated POST request to `/Panopto/Pages/Viewer/DeliveryInfo.aspx` and gracefully parses the JSON response for `PodcastUrl` or stream arrays.
+    * **Step 6: Network Interception:** Reads the browser's `window.performance.getEntriesByType("resource")` network log to steal the exact `.mp4` or `.m3u8` URL the player is actively streaming.
+    * **Step 7: DOM Regex:** As an ultimate fallback, runs a Regex sweep over `document.documentElement.innerHTML` for any string matching an `.mp4` or `.m3u8` URL pattern.
+3. **Result Return:** An object containing the extracted URL and filename is synchronously returned to the service worker.
 
 ### Download Execution Flow (Service Worker)
 1. **Result Reception:** The `background.js` script awaits the injection results and receives the video data.
-2. **Download API Invocation:** It invokes the `chrome.downloads.download` API with the provided URL and filename, setting `saveAs: true` so the user is prompted to choose a download location.
+2. **Download API Invocation:** It invokes the `chrome.downloads.download` API with the provided URL and filename, setting `saveAs: true` so the user is prompted to choose a download location. If an `.m3u8` is returned, it simply downloads the playlist file.
 
 ---
 

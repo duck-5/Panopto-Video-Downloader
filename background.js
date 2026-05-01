@@ -1,17 +1,27 @@
 chrome.action.onClicked.addListener(async (tab) => {
     try {
+        if (!tab.url || !tab.url.startsWith('http')) {
+            return;
+        }
+
         const url = new URL(tab.url);
-        if (url.hostname.endsWith('panopto.com') || url.hostname.endsWith('panopto.eu')) {
+        const isPanopto = url.hostname === 'panopto.com' || url.hostname.endsWith('.panopto.com') ||
+                          url.hostname === 'panopto.eu' || url.hostname.endsWith('.panopto.eu');
+
+        if (isPanopto) {
             if (url.pathname.includes('/Embed.aspx')) {
                 const newUrl = tab.url.replace('/Embed.aspx', '/Viewer.aspx');
+                await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    func: () => alert("Redirecting to Viewer... Please click the extension icon again once the new page loads.")
+                });
                 chrome.tabs.update(tab.id, { url: newUrl });
-                // We inject a script to notify the user they might need to click again.
-                // activeTab permission is lost when navigating.
                 return;
             }
 
             const results = await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
+                world: 'MAIN', // Inject into the page's execution environment to read global variables
                 files: ['payload.js']
             });
 
