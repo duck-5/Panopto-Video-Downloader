@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panopto Video Downloader</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="popup-container">
+        <!-- Header -->
+        <header class="popup-header">
+            <div class="brand">
+                <img src="icon.png" alt="Logo" class="brand-icon">
+                <div class="brand-text">
+                    <span class="brand-title">Panopto DL</span>
+                    <span class="brand-version">v1.6</span>
+                </div>
+            </div>
+            <button id="headerViewerBtn" class="header-action-btn" title="Open Smart Dual-Screen Viewer">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                <span>Smart Viewer</span>
+            </button>
+        </header>
+
+        <!-- Loading View -->
+        <div id="loadingView" class="view">
+            <div class="spinner"></div>
+            <p class="view-title">Scanning page for streams...</p>
+            <p class="view-desc">Inspecting Panopto metadata, camera feeds & screen shares.</p>
+        </div>
+
+        <!-- Non-Panopto View -->
+        <div id="nonPanoptoView" class="view hidden">
+            <div class="icon-circle warning">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+            </div>
+            <p class="view-title">Not a Panopto Page</p>
+            <p class="view-desc">Navigate to a Panopto lecture recording (panopto.com or panopto.eu) to download multi-screen streams.</p>
+            <button id="openOfflineViewerBtn" class="btn btn-primary full-width">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                </svg>
+                <span>Open Offline Smart Viewer</span>
+            </button>
+        </div>
+
+        <!-- Embed Redirect View -->
+        <div id="embedView" class="view hidden">
+            <div class="icon-circle info">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+            </div>
+            <p class="view-title">Embedded Player Detected</p>
+            <p class="view-desc">Switch to the full Panopto Viewer to extract all multi-screen streams in high resolution.</p>
+            <button id="redirectToViewerBtn" class="btn btn-primary full-width">
+                Switch to Full Viewer
+            </button>
+        </div>
+
+        <!-- Streams Detected View -->
+        <div id="streamsView" class="view hidden">
+            <div class="session-card">
+                <div class="session-info">
+                    <h2 id="sessionTitle" class="session-title">Loading...</h2>
+                    <span id="streamCountBadge" class="badge badge-accent">0 Streams</span>
+                </div>
+            </div>
+
+            <div class="streams-container">
+                <div class="streams-heading">Detected Video Feeds</div>
+                <div id="streamList" class="stream-list">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <div class="actions-section">
+                <button id="downloadAllBtn" class="btn btn-secondary full-width">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <span>Download All Screens</span>
+                </button>
+
+                <button id="watchInViewerBtn" class="btn btn-primary full-width">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                    <span>Watch in Smart Dual Viewer</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- No Streams Found View -->
+        <div id="noStreamsView" class="view hidden">
+            <div class="icon-circle warning">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                </svg>
+            </div>
+            <p class="view-title">No Video Streams Found</p>
+            <p class="view-desc">Could not extract video URLs from this page. Try starting video playback first so the player requests the streams, then reopen this popup.</p>
+            <button id="retryScanBtn" class="btn btn-secondary full-width">Retry Scan</button>
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="toast hidden">Copied to clipboard!</div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

@@ -1,52 +1,66 @@
-chrome.action.onClicked.addListener(async (tab) => {
-    try {
-        if (!tab.url || !tab.url.startsWith('http')) {
+// Background Service Worker for Panopto Video Downloader
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'DOWNLOAD_STREAM') {
+        const { url, filename, saveAs } = message;
+        if (!url) {
+            sendResponse({ success: false, error: 'No URL provided' });
             return;
         }
 
-        const url = new URL(tab.url);
-        const isPanopto = url.hostname === 'panopto.com' || url.hostname.endsWith('.panopto.com') ||
-                          url.hostname === 'panopto.eu' || url.hostname.endsWith('.panopto.eu');
-
-        if (isPanopto) {
-            if (url.pathname.includes('/Embed.aspx')) {
-                const newUrl = tab.url.replace('/Embed.aspx', '/Viewer.aspx');
-                await chrome.scripting.executeScript({
-                    target: { tabId: tab.id },
-                    func: () => alert("Redirecting to Viewer... Please click the extension icon again once the new page loads.")
-                });
-                chrome.tabs.update(tab.id, { url: newUrl });
-                return;
+        chrome.downloads.download({
+            url: url,
+            filename: filename || 'video.mp4',
+            saveAs: typeof saveAs === 'boolean' ? saveAs : true
+        }, (downloadId) => {
+            if (chrome.runtime.lastError) {
+                console.error("Download error:", chrome.runtime.lastError);
+                sendResponse({ success: false, error: chrome.runtime.lastError.message });
+            } else {
+                sendResponse({ success: true, downloadId });
             }
+        });
+        return true; // Keep message channel open for async response
+    }
 
-            const results = await chrome.scripting.executeScript({
-                target: { tabId: tab.id },
-                world: 'MAIN', // Inject into the page's execution environment to read global variables
-                files: ['payload.js']
-            });
-
-            if (results && results[0] && results[0].result) {
-                const { videoUrl, name } = results[0].result;
-                if (videoUrl) {
-                    chrome.downloads.download({
-                        url: videoUrl,
-                        filename: name || "video.mp4",
-                        saveAs: true
-                    });
-                } else {
-                    await chrome.scripting.executeScript({
-                        target: { tabId: tab.id },
-                        func: () => alert("Could not find video stream URL on this page. Wait for it to load or try another.")
-                    });
-                }
-            }
-        } else {
-            await chrome.scripting.executeScript({
-                target: { tabId: tab.id },
-                func: () => alert("Sorry, but I didn't find any videos. Are you sure the address in the search bar is with \"panopto.eu\" or \"panopto.com\" ?")
-            });
+    if (message.action === 'DOWNLOAD_ALL') {
+        const { streams } = message;
+        if (!Array.isArray(streams) || streams.length === 0) {
+            sendResponse({ success: false, error: 'No streams to download' });
+            return;
         }
-    } catch (e) {
-        console.error(e);
+
+        // Trigger downloads with a slight delay between them to prevent browser throttling
+        streams.forEach((stream, index) => {
+            setTimeout(() => {
+                chrome.downloads.download({
+                    url: stream.url,
+                    filename: stream.filename || `video_${index + 1}.mp4`,
+                    saveAs: false // Auto save to downloads folder for bulk downloads
+                }, (downloadId) => {
+                    if (chrome.runtime.lastError) {
+                        console.error("Batch download error:", chrome.runtime.lastError);
+                    }
+                });
+            }, index * 400);
+        });
+
+        sendResponse({ success: true, count: streams.length });
+        return true;
+    }
+
+    if (message.action === 'OPEN_SMART_VIEWER') {
+        const viewerUrl = chrome.runtime.getURL('viewer.html') + (message.query || '');
+        chrome.tabs.create({ url: viewerUrl });
+        sendResponse({ success: true });
+        return true;
+    }
+
+    if (message.action === 'REDIRECT_TO_VIEWER') {
+        const { tabId, url } = message;
+        const newUrl = url.replace('/Embed.aspx', '/Viewer.aspx');
+        chrome.tabs.update(tabId, { url: newUrl });
+        sendResponse({ success: true });
+        return true;
     }
 });

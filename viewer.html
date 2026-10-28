@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panopto Smart Dual-Screen Viewer</title>
+    <link rel="stylesheet" href="viewer.css">
+    <link rel="icon" type="image/png" href="icon.png">
+</head>
+<body class="theme-dark preset-split-equal">
+    <!-- Main Viewer Wrapper -->
+    <div class="viewer-wrapper" id="viewerWrapper">
+        
+        <!-- Secondary Tab Notification Banner (Shown only when in Split-Tab mode) -->
+        <div id="splitBanner" class="split-banner hidden">
+            <div class="split-banner-content">
+                <span class="status-indicator live"></span>
+                <span id="splitBannerText">Split Tab Mode: Stream 2 is playing in Tab 2.</span>
+                <button id="rejoinBtn" class="banner-action-btn">Merge back into Single Tab</button>
+            </div>
+        </div>
+
+        <!-- Top Navigation / Header -->
+        <header class="top-nav" id="topNav">
+            <div class="nav-left">
+                <div class="brand-badge">
+                    <img src="icon.png" alt="Panopto DL" class="logo-img">
+                    <span class="brand-text">Panopto Smart Viewer</span>
+                </div>
+                <div class="session-heading" id="sessionHeading" title="Click to rename lecture">
+                    Panopto Recording
+                </div>
+            </div>
+
+            <!-- Presets Toolbar -->
+            <div class="nav-center" id="presetsBar">
+                <div class="preset-group" title="Select Layout Preset">
+                    <button class="preset-btn active" data-preset="preset-split-equal" title="Equal Split (50 / 50)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="3" width="20" height="18" rx="2"></rect>
+                            <line x1="12" y1="3" x2="12" y2="21"></line>
+                        </svg>
+                        <span>50/50</span>
+                    </button>
+                    <button class="preset-btn" data-preset="preset-focus-screen" title="Screen Focus (75 / 25)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="3" width="20" height="18" rx="2"></rect>
+                            <line x1="16" y1="3" x2="16" y2="21"></line>
+                        </svg>
+                        <span>Screen 75%</span>
+                    </button>
+                    <button class="preset-btn" data-preset="preset-focus-presenter" title="Presenter Focus (25 / 75)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="3" width="20" height="18" rx="2"></rect>
+                            <line x1="8" y1="3" x2="8" y2="21"></line>
+                        </svg>
+                        <span>Camera 75%</span>
+                    </button>
+                    <button class="preset-btn" data-preset="preset-pip" title="Picture-in-Picture (Overlay)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="3" width="20" height="18" rx="2"></rect>
+                            <rect x="13" y="12" width="7" height="7" rx="1" fill="currentColor" fill-opacity="0.3"></rect>
+                        </svg>
+                        <span>PiP</span>
+                    </button>
+                    <button class="preset-btn" data-preset="preset-stacked" title="Stacked Top / Bottom">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="3" width="20" height="18" rx="2"></rect>
+                            <line x1="2" y1="12" x2="22" y2="12"></line>
+                        </svg>
+                        <span>Stacked</span>
+                    </button>
+                    <button class="preset-btn" data-preset="preset-single" title="Single Screen (Press S to swap)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="3" width="20" height="18" rx="2"></rect>
+                        </svg>
+                        <span>Single</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="nav-right">
+                <!-- Swap Streams Button -->
+                <button id="swapBtn" class="nav-btn" title="Swap Streams (Hotkey: S)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M7 16V4M7 4L3 8M7 4L11 8M17 8V20M17 20L21 16M17 20L13 16"></path>
+                    </svg>
+                    <span>Swap</span>
+                </button>
+
+                <!-- Split to 2 Tabs Button (Feature 2.1) -->
+                <button id="splitTabsBtn" class="nav-btn accent-tab-btn" title="Split into 2 Separate Browser Tabs / Multi-Monitor">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    <span>Split to 2 Tabs</span>
+                </button>
+
+                <!-- Source Loader Button -->
+                <button id="sourceModalBtn" class="nav-btn" title="Choose Video Sources (Files or URLs)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span>Sources</span>
+                </button>
+
+                <!-- Shortcuts Button -->
+                <button id="shortcutsBtn" class="nav-btn icon-only" title="Keyboard Shortcuts (?)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                </button>
+
+                <!-- Fullscreen Button -->
+                <button id="fullscreenBtn" class="nav-btn icon-only" title="Toggle Fullscreen (Hotkey: F)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Video Display Stage -->
+        <main class="video-stage" id="videoStage">
+            
+            <!-- Stream 1 (Primary / Camera) Container -->
+            <div class="video-container" id="streamContainer1">
+                <div class="stream-header-overlay">
+                    <div class="stream-label" id="streamLabel1">
+                        <span class="badge-dot primary"></span>
+                        <span id="streamTitle1">Presenter / Camera</span>
+                    </div>
+                    <div class="stream-audio-ctrl">
+                        <button class="stream-mute-btn" id="streamMuteBtn1" title="Mute Stream 1">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                            </svg>
+                        </button>
+                        <input type="range" class="stream-vol-slider" id="streamVol1" min="0" max="1" step="0.05" value="1">
+                    </div>
+                </div>
+
+                <video id="video1" playsinline></video>
+
+                <!-- Empty Dropzone State -->
+                <div class="drop-empty-state" id="dropEmpty1">
+                    <div class="drop-icon">
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M23 7l-7 5 7 5V7z"></path>
+                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                        </svg>
+                    </div>
+                    <p class="drop-title">Presenter Video</p>
+                    <p class="drop-desc">Drag & drop video file or click to select</p>
+                    <input type="file" id="fileInput1" accept="video/*" class="hidden-file-input">
+                </div>
+            </div>
+
+            <!-- Resizable Split Divider (Active in side-by-side presets) -->
+            <div class="split-divider" id="splitDivider" title="Drag to adjust split ratio">
+                <div class="divider-handle"></div>
+            </div>
+
+            <!-- Stream 2 (Secondary / Screen) Container -->
+            <div class="video-container" id="streamContainer2">
+                <div class="stream-header-overlay">
+                    <div class="stream-label" id="streamLabel2">
+                        <span class="badge-dot secondary"></span>
+                        <span id="streamTitle2">Screen / Presentation</span>
+                    </div>
+                    <div class="stream-audio-ctrl">
+                        <button class="stream-mute-btn" id="streamMuteBtn2" title="Mute Stream 2">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="1" y1="1" x2="23" y2="23"></line>
+                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                            </svg>
+                        </button>
+                        <input type="range" class="stream-vol-slider" id="streamVol2" min="0" max="1" step="0.05" value="0">
+                    </div>
+                </div>
+
+                <video id="video2" playsinline></video>
+
+                <!-- Empty Dropzone State -->
+                <div class="drop-empty-state" id="dropEmpty2">
+                    <div class="drop-icon">
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                            <line x1="8" y1="21" x2="16" y2="21"></line>
+                            <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                    </div>
+                    <p class="drop-title">Screen Video</p>
+                    <p class="drop-desc">Drag & drop video file or click to select</p>
+                    <input type="file" id="fileInput2" accept="video/*" class="hidden-file-input">
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Master Playback Control Bar -->
+        <footer class="player-controls" id="playerControls">
+            
+            <!-- Timeline / Scrubber -->
+            <div class="timeline-container" id="timelineContainer">
+                <div class="timeline-progress-bg"></div>
+                <div class="timeline-buffer" id="timelineBuffer"></div>
+                <div class="timeline-played" id="timelinePlayed"></div>
+                <div class="timeline-thumb" id="timelineThumb"></div>
+                <div class="timeline-tooltip" id="timelineTooltip">00:00</div>
+            </div>
+
+            <!-- Controls Row -->
+            <div class="controls-row">
+                
+                <!-- Left: Play/Pause, Replay, Forward, Time Display, Sync Badge -->
+                <div class="ctrl-group left">
+                    <button id="playPauseBtn" class="ctrl-btn main-play-btn" title="Play / Pause (Space)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" id="playIcon">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" id="pauseIcon" class="hidden">
+                            <rect x="6" y="4" width="4" height="16"></rect>
+                            <rect x="14" y="4" width="4" height="16"></rect>
+                        </svg>
+                    </button>
+
+                    <button id="rewindBtn" class="ctrl-btn" title="Seek backward 10s (Left Arrow)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="1 4 1 10 7 10"></polyline>
+                            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                        </svg>
+                        <span class="ctrl-subtext">10s</span>
+                    </button>
+
+                    <button id="forwardBtn" class="ctrl-btn" title="Seek forward 10s (Right Arrow)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                        </svg>
+                        <span class="ctrl-subtext">10s</span>
+                    </button>
+
+                    <div class="time-display">
+                        <span id="currentTime">00:00:00</span>
+                        <span class="time-separator">/</span>
+                        <span id="totalDuration">00:00:00</span>
+                    </div>
+
+                    <div class="sync-status" id="syncStatus" title="Playback Sync Status">
+                        <span class="sync-dot synced"></span>
+                        <span class="sync-label">Synced</span>
+                    </div>
+                </div>
+
+                <!-- Center: Audio Selector & Master Volume -->
+                <div class="ctrl-group center">
+                    <div class="audio-source-selector" title="Choose which audio stream to hear">
+                        <button class="audio-src-btn active" data-src="primary">Camera Audio</button>
+                        <button class="audio-src-btn" data-src="both">Both</button>
+                        <button class="audio-src-btn" data-src="secondary">Screen Audio</button>
+                    </div>
+
+                    <div class="master-volume-ctrl">
+                        <button id="masterMuteBtn" class="ctrl-btn" title="Master Mute (M)">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="masterVolIcon">
+                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                            </svg>
+                        </button>
+                        <input type="range" id="masterVolSlider" min="0" max="1" step="0.05" value="1" title="Master Volume">
+                    </div>
+                </div>
+
+                <!-- Right: Playback Speed, Layout indicator, Fullscreen -->
+                <div class="ctrl-group right">
+                    <div class="speed-selector">
+                        <button id="speedBtn" class="ctrl-btn speed-btn" title="Playback Speed">
+                            <span id="speedLabel">1.0x</span>
+                        </button>
+                        <div class="speed-menu hidden" id="speedMenu">
+                            <div class="speed-option" data-speed="0.5">0.5x</div>
+                            <div class="speed-option" data-speed="0.75">0.75x</div>
+                            <div class="speed-option active" data-speed="1.0">1.0x (Normal)</div>
+                            <div class="speed-option" data-speed="1.25">1.25x</div>
+                            <div class="speed-option" data-speed="1.5">1.5x</div>
+                            <div class="speed-option" data-speed="1.75">1.75x</div>
+                            <div class="speed-option" data-speed="2.0">2.0x</div>
+                            <div class="speed-option" data-speed="2.5">2.5x</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- Source Loader Modal -->
+    <div class="modal-overlay hidden" id="sourceModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Load Video Sources</h3>
+                <button class="modal-close-btn" id="closeSourceModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-tabs">
+                    <button class="modal-tab-btn active" data-tab="localFilesTab">Local Video Files</button>
+                    <button class="modal-tab-btn" data-tab="streamUrlsTab">Direct URLs</button>
+                </div>
+
+                <!-- Tab 1: Local Files -->
+                <div class="modal-tab-pane active" id="localFilesTab">
+                    <div class="dual-file-dropzone" id="batchDropzone">
+                        <div class="drop-icon large">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="12" y1="18" x2="12" y2="12"></line>
+                                <line x1="9" y1="15" x2="15" y2="15"></line>
+                            </svg>
+                        </div>
+                        <p class="drop-title">Select or Drop Both Video Files</p>
+                        <p class="drop-desc">Automatically pairs your downloaded Camera and Screen videos!</p>
+                        <input type="file" id="batchFileInput" multiple accept="video/*" class="hidden-file-input">
+                        <button class="btn btn-primary" id="batchSelectBtn">Browse Files</button>
+                    </div>
+
+                    <div class="file-pickers-row">
+                        <div class="file-picker-box">
+                            <label>Camera / Presenter Stream:</label>
+                            <input type="file" id="individualFile1" accept="video/*">
+                        </div>
+                        <div class="file-picker-box">
+                            <label>Screen / Presentation Stream:</label>
+                            <input type="file" id="individualFile2" accept="video/*">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Stream URLs -->
+                <div class="modal-tab-pane" id="streamUrlsTab">
+                    <div class="input-field">
+                        <label for="urlInput1">Stream 1 (Presenter / Camera) URL:</label>
+                        <input type="url" id="urlInput1" placeholder="https://...mp4">
+                    </div>
+                    <div class="input-field">
+                        <label for="urlInput2">Stream 2 (Screen / Presentation) URL:</label>
+                        <input type="url" id="urlInput2" placeholder="https://...mp4">
+                    </div>
+                    <button class="btn btn-primary full-width" id="loadUrlsBtn">Load Streams</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shortcuts Modal -->
+    <div class="modal-overlay hidden" id="shortcutsModal">
+        <div class="modal-card shortcuts-card">
+            <div class="modal-header">
+                <h3>Keyboard Shortcuts</h3>
+                <button class="modal-close-btn" id="closeShortcutsModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="shortcuts-grid">
+                    <div class="shortcut-item"><kbd>Space</kbd> <span>Play / Pause</span></div>
+                    <div class="shortcut-item"><kbd>←</kbd> / <kbd>→</kbd> <span>Seek -5s / +5s</span></div>
+                    <div class="shortcut-item"><kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd> <span>Seek -15s / +15s</span></div>
+                    <div class="shortcut-item"><kbd>↑</kbd> / <kbd>↓</kbd> <span>Volume Up / Down</span></div>
+                    <div class="shortcut-item"><kbd>M</kbd> <span>Toggle Mute</span></div>
+                    <div class="shortcut-item"><kbd>S</kbd> <span>Swap Feeds</span></div>
+                    <div class="shortcut-item"><kbd>F</kbd> <span>Toggle Fullscreen</span></div>
+                    <div class="shortcut-item"><kbd>1</kbd> - <kbd>6</kbd> <span>Switch Layout Presets</span></div>
+                    <div class="shortcut-item"><kbd>T</kbd> <span>Split to 2 Tabs (Multi-Monitor)</span></div>
+                    <div class="shortcut-item"><kbd>Esc</kbd> <span>Close Modals / Exit Fullscreen</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Notification Toast -->
+    <div id="viewerToast" class="viewer-toast hidden"></div>
+
+    <script src="viewer.js"></script>
+</body>
+</html>
