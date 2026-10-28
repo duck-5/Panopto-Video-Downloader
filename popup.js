@@ -18,6 +18,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const redirectToViewerBtn = document.getElementById('redirectToViewerBtn');
     const retryScanBtn = document.getElementById('retryScanBtn');
 
+    // Native in-page pop-out elements
+    const nativePopoutScreenBtn = document.getElementById('nativePopoutScreenBtn');
+    const nativePopoutCameraBtn = document.getElementById('nativePopoutCameraBtn');
+
     let currentTab = null;
     let extractedData = null;
 
@@ -31,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function showToast(message) {
         toast.textContent = message;
         toast.classList.remove('hidden');
-        setTimeout(() => toast.classList.add('hidden'), 2200);
+        setTimeout(() => toast.classList.add('hidden'), 2600);
     }
 
     function openViewerWithSession(sessionData) {
@@ -64,6 +68,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    // Native in-page pop-out triggers
+    async function triggerNativePopout(targetType) {
+        if (!currentTab || !currentTab.id) return;
+        try {
+            const results = await chrome.scripting.executeScript({
+                target: { tabId: currentTab.id },
+                func: (type) => {
+                    if (typeof window.__panoptoToggleTarget === 'function') {
+                        return window.__panoptoToggleTarget(type);
+                    }
+                    return { success: false, error: 'Controller not ready' };
+                },
+                args: [targetType]
+            });
+
+            if (results && results[0] && results[0].result) {
+                const res = results[0].result;
+                if (res.success) {
+                    if (res.state === 'entered') {
+                        showToast(`Popped out ${targetType === 'primary' ? 'Camera' : 'Screen'} to floating window!`);
+                    } else {
+                        showToast(`Rejoined ${targetType === 'primary' ? 'Camera' : 'Screen'} to page`);
+                    }
+                } else {
+                    showToast(res.error || "Could not pop out video");
+                }
+            }
+        } catch (err) {
+            console.warn("Pop-out trigger error:", err);
+            showToast("Click the floating button directly on the Panopto player");
+        }
+    }
+
+    if (nativePopoutScreenBtn) {
+        nativePopoutScreenBtn.addEventListener('click', () => triggerNativePopout('secondary'));
+    }
+
+    if (nativePopoutCameraBtn) {
+        nativePopoutCameraBtn.addEventListener('click', () => triggerNativePopout('primary'));
+    }
+
     function renderStreams(data) {
         extractedData = data;
         const streams = data.streams || [];
@@ -81,7 +126,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isPodcast = stream.type === 'podcast';
             const iconType = isPodcast ? 'podcast' : (isPrimary ? 'primary' : 'secondary');
 
-            // Icon SVG selection
             let iconSvg = '';
             if (isPodcast) {
                 iconSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>`;
@@ -164,7 +208,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         };
 
-        // Watch in Smart Viewer button
+        // Watch in Smart Viewer button (Live streaming, no download)
         watchInViewerBtn.onclick = () => {
             openViewerWithSession(extractedData);
         };
@@ -203,6 +247,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
+            // 1. Inject native in-page pop-out controller (adds in-page floating buttons)
+            chrome.scripting.executeScript({
+                target: { tabId: currentTab.id },
+                files: ['native_popout.js']
+            }).catch(e => console.warn("Native popout injection notice:", e));
+
+            // 2. Extract multi-screen streams
             const results = await chrome.scripting.executeScript({
                 target: { tabId: currentTab.id },
                 world: 'MAIN',
@@ -214,7 +265,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (data.streams && data.streams.length > 0) {
                     renderStreams(data);
                 } else if (data.videoUrl) {
-                    // Fallback single stream
                     renderStreams({
                         title: data.name.replace(/\.mp4$/i, ''),
                         streams: [{

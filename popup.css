@@ -413,6 +413,51 @@ body {
     border-color: rgba(255, 255, 255, 0.25);
 }
 
+.btn-outline {
+    background: rgba(59, 130, 246, 0.1);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    flex: 1;
+}
+
+.btn-outline:hover {
+    background: rgba(59, 130, 246, 0.22);
+    border-color: #60a5fa;
+    color: #ffffff;
+}
+
+/* Native Pop-Out Section */
+.native-popout-section {
+    width: 100%;
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    border-radius: var(--radius-md);
+    padding: 10px;
+    margin-bottom: 12px;
+}
+
+.section-divider-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: #60a5fa;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    text-align: left;
+}
+
+.popout-btn-grid {
+    display: flex;
+    gap: 8px;
+}
+
+.popout-hint {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 6px;
+    text-align: left;
+}
+
 /* Toast */
 .toast {
     position: fixed;

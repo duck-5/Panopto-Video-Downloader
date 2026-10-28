@@ -49,6 +49,15 @@ Have dual monitors? You can split the viewer into two separate browser tabs:
 
 ---
 
+### 3. Live In-Page Pop-Out (Without Downloading)
+If you prefer staying directly inside the original Panopto viewer page:
+* **Floating In-Page Buttons**: Opening the extension automatically mounts discreet glassmorphism `[ ⧉ Pop Out Screen ]` and `[ ⧉ Pop Out Camera ]` buttons directly onto the Panopto player.
+* **1-Click Floating OS Window**: Pops the screen share out into a native Picture-in-Picture window that can be dragged to your second monitor.
+* **Zero Downloads & 100% Native Sync**: All of Panopto's native features—timeline scrubbing, play/pause, speed controls, transcripts, and notes—remain fully active and synchronized.
+* **From Popup**: You can also click **"Pop Out Screen"** or **"Pop Out Camera"** directly in the extension popup menu.
+
+---
+
 ## ⌨️ Keyboard Shortcuts (Smart Viewer)
 
 | Shortcut | Action |
