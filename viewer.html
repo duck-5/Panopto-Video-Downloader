@@ -279,18 +279,33 @@
                 <!-- Right: Playback Speed, Layout indicator, Fullscreen -->
                 <div class="ctrl-group right">
                     <div class="speed-selector">
-                        <button id="speedBtn" class="ctrl-btn speed-btn" title="Playback Speed">
+                        <button id="speedBtn" class="ctrl-btn speed-btn" title="Playback Speed (Hotkey: [ / ])">
                             <span id="speedLabel">1.0x</span>
                         </button>
                         <div class="speed-menu hidden" id="speedMenu">
-                            <div class="speed-option" data-speed="0.5">0.5x</div>
-                            <div class="speed-option" data-speed="0.75">0.75x</div>
-                            <div class="speed-option active" data-speed="1.0">1.0x (Normal)</div>
-                            <div class="speed-option" data-speed="1.25">1.25x</div>
-                            <div class="speed-option" data-speed="1.5">1.5x</div>
-                            <div class="speed-option" data-speed="1.75">1.75x</div>
-                            <div class="speed-option" data-speed="2.0">2.0x</div>
-                            <div class="speed-option" data-speed="2.5">2.5x</div>
+                            <div class="speed-stepper-header">Custom Speed</div>
+                            <div class="speed-stepper-row">
+                                <button id="speedDecBtn" class="stepper-step-btn" title="Decrease speed 0.1x (Hotkey: [)">-0.1x</button>
+                                <div class="stepper-input-wrap">
+                                    <input type="number" id="speedCustomInput" min="0.25" max="4.0" step="0.05" value="1.0" class="speed-stepper-input" />
+                                    <span class="stepper-unit">x</span>
+                                </div>
+                                <button id="speedIncBtn" class="stepper-step-btn" title="Increase speed 0.1x (Hotkey: ])">+0.1x</button>
+                            </div>
+                            <div class="speed-divider"></div>
+                            <div class="speed-presets-grid">
+                                <div class="speed-option" data-speed="0.5">0.5x</div>
+                                <div class="speed-option" data-speed="0.75">0.75x</div>
+                                <div class="speed-option active" data-speed="1.0">1.0x</div>
+                                <div class="speed-option" data-speed="1.25">1.25x</div>
+                                <div class="speed-option" data-speed="1.5">1.5x</div>
+                                <div class="speed-option" data-speed="1.75">1.75x</div>
+                                <div class="speed-option" data-speed="2.0">2.0x</div>
+                                <div class="speed-option" data-speed="2.25">2.25x</div>
+                                <div class="speed-option" data-speed="2.5">2.5x</div>
+                                <div class="speed-option" data-speed="2.75">2.75x</div>
+                                <div class="speed-option" data-speed="3.0">3.0x</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -372,6 +387,8 @@
                     <div class="shortcut-item"><kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd> <span>Seek -15s / +15s</span></div>
                     <div class="shortcut-item"><kbd>↑</kbd> / <kbd>↓</kbd> <span>Volume Up / Down</span></div>
                     <div class="shortcut-item"><kbd>M</kbd> <span>Toggle Mute</span></div>
+                    <div class="shortcut-item"><kbd>[</kbd> / <kbd>]</kbd> <span>Speed Down / Up (0.1x)</span></div>
+                    <div class="shortcut-item"><kbd>\</kbd> <span>Reset Speed (1.0x)</span></div>
                     <div class="shortcut-item"><kbd>S</kbd> <span>Swap Feeds</span></div>
                     <div class="shortcut-item"><kbd>F</kbd> <span>Toggle Fullscreen</span></div>
                     <div class="shortcut-item"><kbd>1</kbd> - <kbd>6</kbd> <span>Switch Layout Presets</span></div>
@@ -385,6 +402,7 @@
     <!-- Custom Notification Toast -->
     <div id="viewerToast" class="viewer-toast hidden"></div>
 
+    <script src="hls.min.js"></script>
     <script src="viewer.js"></script>
 </body>
 </html>

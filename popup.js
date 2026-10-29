@@ -22,6 +22,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const nativePopoutScreenBtn = document.getElementById('nativePopoutScreenBtn');
     const nativePopoutCameraBtn = document.getElementById('nativePopoutCameraBtn');
 
+    // Captions & Transcripts elements
+    const captionsSection = document.getElementById('captionsSection');
+    const downloadSrtBtn = document.getElementById('downloadSrtBtn');
+    const downloadVttBtn = document.getElementById('downloadVttBtn');
+    const downloadTxtBtn = document.getElementById('downloadTxtBtn');
+    const copyTranscriptBtn = document.getElementById('copyTranscriptBtn');
+
     let currentTab = null;
     let extractedData = null;
 
@@ -36,6 +43,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         toast.textContent = message;
         toast.classList.remove('hidden');
         setTimeout(() => toast.classList.add('hidden'), 2600);
+    }
+
+    function downloadTextFile(content, filename, mimeType = 'text/plain') {
+        if (!content) return;
+        const blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
+        const url = URL.createObjectURL(blob);
+        chrome.downloads.download({
+            url: url,
+            filename: filename,
+            saveAs: true
+        }, (downloadId) => {
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+            if (chrome.runtime.lastError) {
+                console.warn("Download text error:", chrome.runtime.lastError);
+            }
+        });
     }
 
     function openViewerWithSession(sessionData) {
@@ -115,6 +138,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         sessionTitle.textContent = data.title || "Panopto Lecture";
         sessionTitle.title = data.title || "";
         streamCountBadge.textContent = `${streams.length} Screen${streams.length === 1 ? '' : 's'}`;
+
+        // Closed Captions & Transcripts
+        if (data.captions && data.captions.hasCaptions) {
+            captionsSection.classList.remove('hidden');
+            const cleanTitle = (data.title || "Lecture").replace(/[<>:"\/\\|?*\x00-\x1F]/g, '_').trim().slice(0, 100);
+
+            downloadSrtBtn.onclick = () => {
+                downloadTextFile(data.captions.srt, `${cleanTitle} - Subtitles.srt`, 'application/x-subrip');
+                showToast("Downloading .SRT subtitles...");
+            };
+
+            downloadVttBtn.onclick = () => {
+                downloadTextFile(data.captions.vtt, `${cleanTitle} - Subtitles.vtt`, 'text/vtt');
+                showToast("Downloading .VTT subtitles...");
+            };
+
+            downloadTxtBtn.onclick = () => {
+                downloadTextFile(data.captions.txt, `${cleanTitle} - Transcript.txt`, 'text/plain');
+                showToast("Downloading text transcript...");
+            };
+
+            copyTranscriptBtn.onclick = async () => {
+                try {
+                    await navigator.clipboard.writeText(data.captions.txt);
+                    showToast("Transcript copied to clipboard!");
+                } catch(e) {
+                    showToast("Failed to copy transcript");
+                }
+            };
+        } else {
+            captionsSection.classList.add('hidden');
+        }
 
         streamList.innerHTML = '';
 

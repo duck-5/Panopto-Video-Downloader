@@ -30,6 +30,7 @@
     let rawStreams = [];
     let podcastUrl = "";
     let detectedTitle = "";
+    let rawTranscript = null;
 
     // 2. Try Global Javascript Variables
     try {
@@ -54,6 +55,9 @@
                 const streams = delivery.Streams || delivery.streams;
                 if (Array.isArray(streams) && streams.length > 0 && rawStreams.length === 0) {
                     rawStreams = streams;
+                }
+                if (!rawTranscript) {
+                    rawTranscript = delivery.Transcript || delivery.transcript || delivery.Captions || delivery.captions || delivery.Timestamps;
                 }
             }
         }
@@ -91,6 +95,9 @@
                         if (data.Delivery.Streams.length >= rawStreams.length) {
                             rawStreams = data.Delivery.Streams;
                         }
+                    }
+                    if (!rawTranscript && data.Delivery) {
+                        rawTranscript = data.Delivery.Transcript || data.Delivery.Captions || data.Delivery.Timestamps;
                     }
                 }
             }
@@ -283,11 +290,97 @@
         primaryFilename = primary.filename;
     }
 
+    // E. Extract & Format Closed Captions / Subtitles
+    let srtContent = "";
+    let vttContent = "";
+    let txtContent = "";
+
+    function formatSrtTime(seconds) {
+        if (isNaN(seconds) || seconds < 0) seconds = 0;
+        const pad = (n, z = 2) => String(Math.floor(n)).padStart(z, '0');
+        const h = pad(seconds / 3600);
+        const m = pad((seconds % 3600) / 60);
+        const s = pad(seconds % 60);
+        const ms = pad(Math.round((seconds % 1) * 1000), 3);
+        return `${h}:${m}:${s},${ms}`;
+    }
+
+    function transcriptArrayToSrt(items) {
+        if (!Array.isArray(items) || items.length === 0) return "";
+        let srt = "";
+        let count = 1;
+        items.forEach((item, index) => {
+            const startSec = item.Time ?? item.Start ?? item.start ?? 0;
+            const nextItem = items[index + 1];
+            const endSec = item.EndTime ?? item.End ?? item.end ?? (nextItem ? (nextItem.Time ?? nextItem.Start ?? startSec + 3) : startSec + 4);
+            const text = (item.Text || item.Caption || item.caption || item.text || "").trim();
+            if (!text) return;
+            srt += `${count}\n${formatSrtTime(startSec)} --> ${formatSrtTime(endSec)}\n${text}\n\n`;
+            count++;
+        });
+        return srt.trim();
+    }
+
+    function srtToVtt(srtText) {
+        if (!srtText) return "";
+        let clean = srtText.replace(/\r\n/g, '\n').trim();
+        return "WEBVTT\n\n" + clean.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
+    }
+
+    function srtToTxt(srtText) {
+        if (!srtText) return "";
+        return srtText
+            .replace(/\r\n/g, '\n')
+            .replace(/^\d+\s*$/gm, '')
+            .replace(/\d{2}:\d{2}:\d{2}[,\.]\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}[,\.]\d{3}/gm, '')
+            .split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0)
+            .join(' ');
+    }
+
+    // 1. Try GenerateSRT.ashx endpoint with authentication
+    if (deliveryId) {
+        const srtCandidates = [
+            `/Panopto/Pages/Transcription/GenerateSRT.ashx?id=${deliveryId}&language=1`,
+            `/Panopto/Pages/Transcription/GenerateSRT.ashx?id=${deliveryId}&language=0`,
+            `/Panopto/Pages/Transcription/GenerateSRT.ashx?id=${deliveryId}`
+        ];
+        for (const candidateUrl of srtCandidates) {
+            try {
+                const res = await fetch(candidateUrl);
+                if (res.ok) {
+                    const text = await res.text();
+                    if (text && text.includes('-->') && !text.trim().startsWith('<')) {
+                        srtContent = text.trim();
+                        break;
+                    }
+                }
+            } catch(e) {}
+        }
+    }
+
+    // 2. Fallback to in-memory transcript array if available
+    if (!srtContent && rawTranscript && Array.isArray(rawTranscript)) {
+        srtContent = transcriptArrayToSrt(rawTranscript);
+    }
+
+    if (srtContent) {
+        vttContent = srtToVtt(srtContent);
+        txtContent = srtToTxt(srtContent);
+    }
+
     return {
         title: sessionTitle,
         deliveryId: deliveryId,
         streams: streams,
         videoUrl: primaryUrl,
-        name: primaryFilename
+        name: primaryFilename,
+        captions: {
+            hasCaptions: Boolean(srtContent),
+            srt: srtContent,
+            vtt: vttContent,
+            txt: txtContent
+        }
     };
 })();

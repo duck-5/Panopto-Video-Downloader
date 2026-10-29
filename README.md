@@ -17,13 +17,16 @@ With this extension, you can:
 * **Download screens separately** with clean, organized filenames (`[Lecture] - Presenter.mp4`, `[Lecture] - Screen.mp4`).
 * **Download All Screens** in one click.
 * **Direct stream links**: Quickly copy direct media links for external tools (e.g. VLC or ffmpeg).
+* **Closed Captions & Transcript Downloader**: One-click download of lecture captions in **SubRip (.srt)**, **WebVTT (.vtt)**, or **Clean Text (.txt)** formats, plus instant 1-click clipboard copy for note-taking and AI summaries.
 
 ---
 
 ### 2. Smart Dual-Screen Viewer
 Watch your downloaded Panopto videos or remote streams synchronously in a full-featured video player designed to replicate and improve upon the native Panopto viewer.
 
-* **Simultaneous Playback & Scrubbing**: Play, pause, seek, and adjust speeds (0.5x - 2.5x) across both screens simultaneously.
+* **Embedded HLS.js Streaming Engine**: Natively plays remote HLS (`.m3u8`) playlists in desktop Chrome without needing external media players like VLC.
+* **Custom Speed Stepper (0.25x - 4.0x)**: Fine-tune playback speed in 0.1x increments with dedicated `+0.1x` / `-0.1x` steppers, jump to presets up to 3.0x, or use keyboard hotkeys `<kbd>[</kbd>` and `<kbd>]</kbd>`.
+* **Simultaneous Playback & Scrubbing**: Play, pause, seek, and adjust speeds across both screens simultaneously.
 * **Automatic Drift Correction**: Continuously realigns playback within 0.15s so audio and slides never drift apart.
 * **Multiple Layout Presets**:
   * **50 / 50 Equal Split**: Side-by-side equal view.
@@ -67,6 +70,9 @@ If you prefer staying directly inside the original Panopto viewer page:
 | <kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd> | Seek backward / forward 15 seconds |
 | <kbd>↑</kbd> / <kbd>↓</kbd> | Increase / decrease master volume |
 | <kbd>M</kbd> | Master Mute / Unmute |
+| <kbd>[</kbd> / <kbd>]</kbd> | Decrease / increase speed by 0.1x |
+| <kbd>Shift</kbd> + <kbd>[</kbd> / <kbd>]</kbd> | Fine-tune speed by 0.05x |
+| <kbd>\</kbd> | Reset speed to 1.0x |
 | <kbd>S</kbd> | Swap screen feeds |
 | <kbd>1</kbd> - <kbd>6</kbd> | Switch layout presets |
 | <kbd>T</kbd> | Split to 2 Tabs (Multi-Monitor Mode) |

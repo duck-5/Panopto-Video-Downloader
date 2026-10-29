@@ -12,7 +12,8 @@ The project is a standard Google Chrome extension built with Javascript and HTML
 * **`payload.js`**: The script programmatically injected into the active Panopto web page (`MAIN` world) to interact with the DOM and Panopto internals to extract all primary, secondary (screen/slides), and combined podcast streams.
 * **`native_popout.js`**: In-page native pop-out controller injected onto Panopto viewer pages. Injects floating `[ ⧉ Pop Out Screen ]` and `[ ⧉ Pop Out Camera ]` buttons directly onto Panopto's video player, enabling instant Picture-in-Picture windowing to a second monitor without downloading.
 * **`popup.html` / `popup.js` / `popup.css`**: The extension toolbar popup UI that scans the active tab, displays all detected video feeds with format badges, allows individual or batch downloading, provides direct native pop-out controls, and includes a 1-click launcher for the Smart Viewer.
-* **`viewer.html` / `viewer.js` / `viewer.css`**: The Smart Dual-Screen Viewer application. Plays multiple streams synchronously (both live remote URLs and local `.mp4` video files), supports layout presets, resizable dividers, audio routing, and multi-tab splitting across multiple monitors via `BroadcastChannel`.
+* **`viewer.html` / `viewer.js` / `viewer.css`**: The Smart Dual-Screen Viewer application. Plays multiple streams synchronously (both live remote URLs and local `.mp4` video files), supports layout presets, resizable dividers, custom speed stepping (0.25x - 4.0x), audio routing, and multi-tab splitting across multiple monitors via `BroadcastChannel`.
+* **`hls.min.js`**: Bundled lightweight HLS engine that enables native playback of remote `.m3u8` streams in desktop Chrome without external plugins.
 * **`README.md`**: Contains overview, installation, usage, and license instructions.
 
 ### Assets

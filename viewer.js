@@ -102,6 +102,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const speedLabel = document.getElementById('speedLabel');
     const speedMenu = document.getElementById('speedMenu');
     const speedOptions = document.querySelectorAll('.speed-option');
+    const speedDecBtn = document.getElementById('speedDecBtn');
+    const speedIncBtn = document.getElementById('speedIncBtn');
+    const speedCustomInput = document.getElementById('speedCustomInput');
 
     // Navigation & Actions
     const presetBtns = document.querySelectorAll('.preset-btn');
@@ -150,6 +153,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let stream2Data = null; // { title, url, file }
     let syncHeartbeatInterval = null;
     let isDraggingDivider = false;
+    let hlsInstance1 = null;
+    let hlsInstance2 = null;
 
     // Toast helper
     function showToast(msg) {
