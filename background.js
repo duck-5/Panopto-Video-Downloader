@@ -1,4 +1,4 @@
-// Background Service Worker for Panopto Video Downloader
+// Background Service Worker for Panopto Tools (Downloader & more!)
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'DOWNLOAD_STREAM') {

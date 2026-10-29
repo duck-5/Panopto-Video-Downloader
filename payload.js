@@ -1,7 +1,7 @@
 (async () => {
     const sanitize = (raw) => {
         if (!raw) return "video";
-        return raw.replace(/[<>:"\/\\|?*\x00-\x1F]/g, '_').trim() || "video";
+        return raw.replace(/[<>:"\/\\|?*\x00-\x1F]/g, '_').trim().slice(0, 120) || "video";
     };
 
     const makeAbsolute = (url) => {

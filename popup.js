@@ -233,16 +233,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             const url = new URL(currentTab.url);
-            const isPanopto = url.hostname === 'panopto.com' || url.hostname.endsWith('.panopto.com') ||
-                              url.hostname === 'panopto.eu' || url.hostname.endsWith('.panopto.eu') ||
-                              url.pathname.includes('/Panopto/');
+            const host = url.hostname.toLowerCase();
+            const path = url.pathname.toLowerCase();
+            const isPanopto = host.includes('panopto') || path.includes('/panopto/');
+
+
 
             if (!isPanopto) {
                 showView(nonPanoptoView);
                 return;
             }
 
-            if (url.pathname.includes('/Embed.aspx')) {
+            if (path.includes('/embed.aspx')) {
                 showView(embedView);
                 return;
             }

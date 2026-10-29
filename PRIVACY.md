@@ -1,6 +1,6 @@
 # Privacy Policy
 
-The Panopto Video Downloader extension respects your privacy and is committed to protecting your personal information.
+The Panopto Tools (Downloader & more!) extension respects your privacy and is committed to protecting your personal information.
 
 ## Data Collection and Usage
 This extension **does not collect, store, or transmit any user data**. 
@@ -12,9 +12,12 @@ This extension **does not collect, store, or transmit any user data**.
 
 ## Permissions
 The extension requests the following permissions for functional reasons only:
-* `activeTab`: To read the video title and stream URL on the specific Panopto page you are viewing when you trigger the extension.
-* `scripting`: To safely extract video metadata from the page.
-* `downloads`: To trigger the browser's built-in download manager for the video file.
+* `activeTab`: To read the video title and stream URLs on the specific Panopto page you are viewing when you trigger the extension.
+* `scripting`: To safely extract video metadata and provide native in-page Picture-in-Picture controls.
+* `downloads`: To trigger the browser's built-in download manager for the video streams.
+* `storage`: To temporarily transfer detected session data locally to the Smart Dual-Screen Viewer tab. No personal data is stored.
+
+
 
 ## Changes to This Policy
 This policy may be updated from time to time. Any changes will be reflected in this file within the source code repository.

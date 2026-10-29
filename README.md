@@ -1,4 +1,4 @@
-# Panopto Video Downloader & Smart Dual-Screen Viewer
+# Panopto Tools (Downloader & more!)
 
 A powerful Google Chrome extension that downloads multi-screen lectures from Panopto (including separate camera and screen shares) and provides a Smart Dual-Screen Viewer to watch them synchronously in multiple layouts or split across multiple monitors.
 

@@ -1,8 +1,7 @@
 {
-	"update_url": "https://clients2.google.com/service/update2/crx",
-	"name": "Panopto Video Downloader",
-	"version": "1.6",
-	"description": "Download multi-screen videos from Panopto and watch synchronously in the Smart Dual-Screen Viewer.",
+	"name": "Panopto Tools (Downloader & more!)",
+	"version": "2.0",
+	"description": "Multi-screen lecture downloader, in-page pop-out PiP controller, and Smart Dual-Screen Viewer with multi-monitor sync.",
 	"manifest_version": 3,
 	"background": {
 		"service_worker": "background.js"

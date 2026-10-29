@@ -1,6 +1,6 @@
-# Panopto Video Downloader System Documentation
+# Panopto Tools (Downloader & more!) System Documentation
 
-This document describes the structure, flows, and methods used in the Panopto Video Downloader Chrome Extension, including multi-screen stream extraction, separate downloading, live in-page pop-out, and the Smart Dual-Screen Viewer.
+This document describes the structure, flows, and methods used in the Panopto Tools Chrome Extension, including multi-screen stream extraction, separate downloading, live in-page pop-out, and the Smart Dual-Screen Viewer.
 
 ## 1. Project Structure
 

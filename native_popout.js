@@ -7,6 +7,9 @@
 (() => {
     // Prevent duplicate injection
     if (window.__panoptoNativePopoutInitialized) {
+        if (typeof window.__panoptoInjectButtons === 'function') {
+            window.__panoptoInjectButtons();
+        }
         if (typeof window.__panoptoToggleTarget === 'function') {
             return window.__panoptoToggleTarget;
         }
@@ -92,16 +95,18 @@
     }
 
     window.__panoptoToggleTarget = togglePopout;
+    window.__panoptoInjectButtons = injectFloatingOverlayButtons;
 
     // Inject discreet floating buttons on the video player
     function injectFloatingOverlayButtons() {
-        if (document.getElementById('panopto-popout-overlay-container')) return;
+
 
         const { primary, secondary } = getPanoptoVideos();
         if (!primary && !secondary) return;
 
         // Container styles
-        const style = document.createElement('style');
+        if (!document.getElementById('panopto-popout-styles')) {
+            const style = document.createElement('style');
         style.id = 'panopto-popout-styles';
         style.textContent = `
             .panopto-popout-btn-overlay {
@@ -144,12 +149,14 @@
             }
         `;
         document.head.appendChild(style);
+        }
 
         function attachButtonToVideo(video, label, type) {
             if (!video || !video.parentElement) return;
 
             // Ensure parent allows absolute positioning
             const parent = video.parentElement;
+            if (parent.querySelector(`.popout-btn-${type}`)) return;
             const parentPos = window.getComputedStyle(parent).position;
             if (parentPos === 'static') {
                 parent.style.position = 'relative';
@@ -218,5 +225,17 @@
 
     // Re-check after 1.5 seconds if video elements loaded dynamically
     setTimeout(injectFloatingOverlayButtons, 1500);
+
+    // Dynamic observer: automatically attaches buttons when video elements render
+    try {
+        const observer = new MutationObserver(() => {
+            const hasBtns = document.querySelector('.panopto-popout-btn-overlay');
+            const hasVideos = document.querySelector('video');
+            if (hasVideos && !hasBtns) {
+                injectFloatingOverlayButtons();
+            }
+        });
+        observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
+    } catch(e) {}
 
 })();
