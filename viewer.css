@@ -434,11 +434,11 @@ html, body {
     width: 6px;
     background: var(--bg-panel);
     cursor: col-resize;
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     position: relative;
-    z-index: 20;
+    z-index: 10;
     transition: background 0.2s ease;
 }
 
@@ -1232,7 +1232,7 @@ body.split-mode-secondary #presetsBar {
     position: absolute;
     inset: 0;
     background: #090d16;
-    z-index: 20;
+    z-index: 100;
     display: flex;
     align-items: center;
     justify-content: center;

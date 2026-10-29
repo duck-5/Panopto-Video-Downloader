@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let isPlaying = false;
     let isSeeking = false;
     let activeAudioSource = 'primary'; // 'primary', 'both', 'secondary'
-    let currentPreset = 'preset-split-equal';
+    let currentPreset = 'preset-single';
     let isSwapped = false;
     let isSingleSwapped = false;
     let stream1Data = null; // { title, url, file }
@@ -862,20 +862,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Single video mode: hide multi-screen layout controls
             setPreset('preset-single');
-            if (presetsBar) presetsBar.style.display = 'none';
-            if (splitTabsBtn) splitTabsBtn.style.display = 'none';
-            if (swapBtn) swapBtn.style.display = 'none';
-            if (splitDivider) splitDivider.style.display = 'none';
-            if (container2) container2.style.display = 'none';
+            [presetsBar, splitTabsBtn, swapBtn, splitDivider, container2].forEach(el => {
+                if (el) {
+                    el.classList.add('hidden');
+                    el.style.display = 'none';
+                }
+            });
 
             showToast("Playing in Single Video Mode");
         } else {
             // 2 or more videos: multi-screen mode
-            if (presetsBar) presetsBar.style.display = '';
-            if (splitTabsBtn) splitTabsBtn.style.display = '';
-            if (swapBtn) swapBtn.style.display = '';
-            if (splitDivider) splitDivider.style.display = '';
-            if (container2) container2.style.display = '';
+            [presetsBar, splitTabsBtn, swapBtn, splitDivider, container2].forEach(el => {
+                if (el) {
+                    el.classList.remove('hidden');
+                    el.style.display = '';
+                }
+            });
 
             let cameraFile = null;
             let screenFile = null;
@@ -1168,23 +1170,30 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const secondary = s.streams.find(st => st.type === 'secondary');
                 const podcast = s.streams.find(st => st.type === 'podcast');
 
-                if (primary && secondary) {
-                    loadStream(1, primary);
-                    loadStream(2, secondary);
-                } else if (podcast && secondary) {
-                    loadStream(1, podcast);
-                    loadStream(2, secondary);
-                } else if (s.streams[0] && s.streams[1]) {
-                    loadStream(1, s.streams[0]);
-                    loadStream(2, s.streams[1]);
-                } else if (s.streams[0]) {
+                const hasTwoStreams = (primary && secondary) || (podcast && secondary) || (s.streams && s.streams.length >= 2);
+
+                if (hasTwoStreams) {
+                    [presetsBar, splitTabsBtn, swapBtn, splitDivider, container2].forEach(el => {
+                        if (el) { el.classList.remove('hidden'); el.style.display = ''; }
+                    });
+
+                    if (primary && secondary) {
+                        loadStream(1, primary);
+                        loadStream(2, secondary);
+                    } else if (podcast && secondary) {
+                        loadStream(1, podcast);
+                        loadStream(2, secondary);
+                    } else if (s.streams[0] && s.streams[1]) {
+                        loadStream(1, s.streams[0]);
+                        loadStream(2, s.streams[1]);
+                    }
+                    setPreset('preset-split-equal');
+                } else if (s.streams && s.streams[0]) {
+                    [presetsBar, splitTabsBtn, swapBtn, splitDivider, container2].forEach(el => {
+                        if (el) { el.classList.add('hidden'); el.style.display = 'none'; }
+                    });
                     loadStream(1, s.streams[0]);
                     setPreset('preset-single');
-                    if (presetsBar) presetsBar.style.display = 'none';
-                    if (splitTabsBtn) splitTabsBtn.style.display = 'none';
-                    if (swapBtn) swapBtn.style.display = 'none';
-                    if (splitDivider) splitDivider.style.display = 'none';
-                    if (container2) container2.style.display = 'none';
                 }
 
                 showToast(`Loaded lecture: ${s.title || "Panopto recording"}`);

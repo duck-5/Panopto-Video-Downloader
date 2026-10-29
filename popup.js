@@ -23,13 +23,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const nativePopoutScreenBtn = document.getElementById('nativePopoutScreenBtn');
     const nativePopoutCameraBtn = document.getElementById('nativePopoutCameraBtn');
 
-    // Captions & Transcripts elements
-    const captionsSection = document.getElementById('captionsSection');
-    const downloadSrtBtn = document.getElementById('downloadSrtBtn');
-    const downloadVttBtn = document.getElementById('downloadVttBtn');
-    const downloadTxtBtn = document.getElementById('downloadTxtBtn');
-    const copyTranscriptBtn = document.getElementById('copyTranscriptBtn');
-
     let currentTab = null;
     let extractedData = null;
 
@@ -149,37 +142,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // Closed Captions & Transcripts
-        if (data.captions && data.captions.hasCaptions) {
-            captionsSection.classList.remove('hidden');
-            const cleanTitle = (data.title || "Lecture").replace(/[<>:"\/\\|?*\x00-\x1F]/g, '_').trim().slice(0, 100);
-
-            downloadSrtBtn.onclick = () => {
-                downloadTextFile(data.captions.srt, `${cleanTitle} - Subtitles.srt`, 'application/x-subrip');
-                showToast("Downloading .SRT subtitles...");
-            };
-
-            downloadVttBtn.onclick = () => {
-                downloadTextFile(data.captions.vtt, `${cleanTitle} - Subtitles.vtt`, 'text/vtt');
-                showToast("Downloading .VTT subtitles...");
-            };
-
-            downloadTxtBtn.onclick = () => {
-                downloadTextFile(data.captions.txt, `${cleanTitle} - Transcript.txt`, 'text/plain');
-                showToast("Downloading text transcript...");
-            };
-
-            copyTranscriptBtn.onclick = async () => {
-                try {
-                    await navigator.clipboard.writeText(data.captions.txt);
-                    showToast("Transcript copied to clipboard!");
-                } catch(e) {
-                    showToast("Failed to copy transcript");
-                }
-            };
-        } else {
-            captionsSection.classList.add('hidden');
-        }
+        // Subtitles handled automatically on video download
 
         streamList.innerHTML = '';
 
@@ -336,12 +299,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 files: ['native_popout.js']
             }).catch(e => console.warn("Native popout injection notice:", e));
 
-            // 2. Extract multi-screen streams
-            const results = await chrome.scripting.executeScript({
-                target: { tabId: currentTab.id },
-                world: 'MAIN',
-                files: ['payload.js']
-            });
+            // 2. Extract multi-screen streams (try MAIN world first for full Panopto global state access)
+            let results;
+            try {
+                results = await chrome.scripting.executeScript({
+                    target: { tabId: currentTab.id },
+                    world: 'MAIN',
+                    files: ['payload.js']
+                });
+            } catch(err) {
+                console.warn("MAIN world executeScript fallback to ISOLATED:", err);
+                results = await chrome.scripting.executeScript({
+                    target: { tabId: currentTab.id },
+                    files: ['payload.js']
+                });
+            }
 
             if (results && results[0] && results[0].result) {
                 const data = results[0].result;

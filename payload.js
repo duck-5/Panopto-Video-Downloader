@@ -168,10 +168,12 @@
     const addStream = (item) => {
         if (!item || !item.url) return;
         const cleanUrl = makeAbsolute(item.url);
-        // Normalize for duplicate check (ignore query params in comparison if base path matches)
-        const baseKey = cleanUrl.split('?')[0];
-        if (seenUrls.has(baseKey)) return;
-        seenUrls.add(baseKey);
+        if (!cleanUrl) return;
+
+        // Normalize only cache-busters (like _=12345), preserve functional stream query parameters
+        const normalizedUrl = cleanUrl.replace(/([?&])_=\d+(&|$)/, '$1').replace(/[?&]$/, '');
+        if (seenUrls.has(normalizedUrl)) return;
+        seenUrls.add(normalizedUrl);
 
         streams.push({
             id: item.id || `stream-${streams.length}`,
@@ -190,13 +192,13 @@
         let secondaryIdx = 0;
 
         rawStreams.forEach((stream, idx) => {
-            const streamUrl = stream.StreamUrl || stream.streamUrl;
+            const streamUrl = stream.StreamUrl || stream.PublicObjectDownloadUrl || stream.StreamHttpUrl || stream.RelativeStreamUrl || stream.Url;
             if (!streamUrl) return;
 
             const streamTypeNum = stream.StreamType ?? stream.streamType;
             const tag = (stream.Tag || stream.tag || '').trim();
 
-            const isPrimary = (streamTypeNum === 1 || tag.toLowerCase().includes('presenter') || tag.toLowerCase().includes('audiovideo') || idx === 0);
+            const isPrimary = (streamTypeNum === 1 || tag.toLowerCase().includes('presenter') || tag.toLowerCase().includes('audiovideo') || (rawStreams.length > 1 && idx === 0 && streamTypeNum !== 2));
             const ext = streamUrl.includes('.m3u8') ? '.m3u8' : '.mp4';
 
             let type = isPrimary ? 'primary' : 'secondary';
@@ -225,7 +227,73 @@
         });
     }
 
-    // B. Add Podcast Stream if available
+    // B. Check DOM <video> elements on page for any active screen feeds not yet in streams
+    try {
+        const domVideos = Array.from(document.querySelectorAll('video'));
+        domVideos.forEach((v) => {
+            const src = v.currentSrc || v.src || v.querySelector('source')?.src;
+            if (src && !src.startsWith('blob:') && (src.includes('.mp4') || src.includes('.m3u8') || src.includes('Stream') || src.includes('Panopto'))) {
+                const absUrl = makeAbsolute(src);
+                const norm = absUrl.replace(/([?&])_=\d+(&|$)/, '$1').replace(/[?&]$/, '');
+                if (!seenUrls.has(norm)) {
+                    const ext = absUrl.includes('.m3u8') ? '.m3u8' : '.mp4';
+                    const sIdx = streams.length + 1;
+                    addStream({
+                        id: `stream-dom-${sIdx}`,
+                        title: `Screen Feed ${sIdx}`,
+                        tag: 'Screen',
+                        type: 'secondary',
+                        url: absUrl,
+                        filename: `${sanitizedTitle} - Screen-${sIdx}${ext}`,
+                        offset: 0
+                    });
+                }
+            }
+        });
+    } catch(e) {}
+
+    // C. Check Network Performance entries for any missing video/m3u8 screen feeds
+    if (performanceUrls.length > 0) {
+        performanceUrls.forEach((pUrl) => {
+            if (pUrl.includes('.ts') || pUrl.includes('segment') || pUrl.includes('fragment')) return;
+            const norm = pUrl.replace(/([?&])_=\d+(&|$)/, '$1').replace(/[?&]$/, '');
+            if (!seenUrls.has(norm)) {
+                const ext = pUrl.includes('.m3u8') ? '.m3u8' : '.mp4';
+                const sIdx = streams.length + 1;
+                addStream({
+                    id: `stream-perf-${sIdx}`,
+                    title: `Screen / Stream ${sIdx}`,
+                    tag: 'Screen',
+                    type: 'secondary',
+                    url: pUrl,
+                    filename: `${sanitizedTitle} - Screen-${sIdx}${ext}`,
+                    offset: 0
+                });
+            }
+        });
+    }
+
+    // D. If still <= 1 stream, check DOM regex matches
+    if (streams.length <= 1 && domMatches.length > 0) {
+        domMatches.forEach((dUrl) => {
+            const norm = dUrl.replace(/([?&])_=\d+(&|$)/, '$1').replace(/[?&]$/, '');
+            if (!seenUrls.has(norm)) {
+                const ext = dUrl.includes('.m3u8') ? '.m3u8' : '.mp4';
+                const sIdx = streams.length + 1;
+                addStream({
+                    id: `stream-dom-${sIdx}`,
+                    title: `Screen / Feed ${sIdx}`,
+                    tag: 'Screen',
+                    type: 'secondary',
+                    url: dUrl,
+                    filename: `${sanitizedTitle} - Screen-${sIdx}${ext}`,
+                    offset: 0
+                });
+            }
+        });
+    }
+
+    // E. Add Podcast Stream (Combined View) if available
     if (podcastUrl) {
         const cleanPodcastUrl = makeAbsolute(podcastUrl);
         const ext = cleanPodcastUrl.includes('.m3u8') ? '.m3u8' : '.mp4';
@@ -237,41 +305,6 @@
             url: cleanPodcastUrl,
             filename: `${sanitizedTitle} - Combined${ext}`,
             offset: 0
-        });
-    }
-
-    // C. If still no streams, populate from performance entries
-    if (streams.length === 0 && performanceUrls.length > 0) {
-        const uniquePerf = [...new Set(performanceUrls)];
-        uniquePerf.forEach((url, idx) => {
-            const ext = url.includes('.m3u8') ? '.m3u8' : '.mp4';
-            const isFirst = idx === 0;
-            addStream({
-                id: `stream-perf-${idx}`,
-                title: isFirst ? 'Primary Video' : `Secondary Video ${idx}`,
-                tag: isFirst ? 'Presenter' : 'Screen',
-                type: isFirst ? 'primary' : 'secondary',
-                url: url,
-                filename: `${sanitizedTitle} - ${isFirst ? 'Presenter' : 'Screen'}${ext}`,
-                offset: 0
-            });
-        });
-    }
-
-    // D. If still no streams, populate from DOM matches
-    if (streams.length === 0 && domMatches.length > 0) {
-        domMatches.forEach((url, idx) => {
-            const ext = url.includes('.m3u8') ? '.m3u8' : '.mp4';
-            const isFirst = idx === 0;
-            addStream({
-                id: `stream-dom-${idx}`,
-                title: isFirst ? 'Video Feed 1' : `Video Feed ${idx + 1}`,
-                tag: isFirst ? 'Primary' : 'Secondary',
-                type: isFirst ? 'primary' : 'secondary',
-                url: url,
-                filename: `${sanitizedTitle} - Feed-${idx + 1}${ext}`,
-                offset: 0
-            });
         });
     }
 
