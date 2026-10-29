@@ -68,6 +68,11 @@
         const { primary, secondary, all } = getPanoptoVideos();
         const targetVideo = (target === 'primary') ? primary : (secondary || primary || all[0]);
 
+        if (all.length <= 1) {
+            alert("This recording only has a single screen. Pop-out is only needed for multi-screen lectures.");
+            return { success: false, error: "Only 1 screen available" };
+        }
+
         if (!targetVideo) {
             alert("No active video feed found on this Panopto page. Start video playback and try again.");
             return { success: false, error: "No video found" };
@@ -99,6 +104,12 @@
 
     // Inject discreet floating buttons on the video player
     function injectFloatingOverlayButtons() {
+        const videos = Array.from(document.querySelectorAll('video'));
+        // Don't ask to pop out anything in case there is only one stream
+        if (videos.length <= 1) {
+            document.querySelectorAll('.panopto-popout-btn-overlay').forEach(b => b.remove());
+            return;
+        }
 
 
         const { primary, secondary } = getPanoptoVideos();

@@ -11,13 +11,17 @@
     <!-- Main Viewer Wrapper -->
     <div class="viewer-wrapper" id="viewerWrapper">
         
-        <!-- Secondary Tab Notification Banner (Shown only when in Split-Tab mode) -->
-        <div id="splitBanner" class="split-banner hidden">
-            <div class="split-banner-content">
-                <span class="status-indicator live"></span>
-                <span id="splitBannerText">Split Tab Mode: Stream 2 is playing in Tab 2.</span>
-                <button id="rejoinBtn" class="banner-action-btn">Merge back into Single Tab</button>
-            </div>
+        <!-- Floating Small Merge Button (Shown only in Tab 2 / Secondary Monitor) -->
+        <div id="secondaryFloatingMerge" class="secondary-floating-merge hidden">
+            <button id="secondaryRejoinBtn" class="floating-merge-btn" title="Close this tab and return to Tab 1">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="4 14 10 14 10 20"></polyline>
+                    <polyline points="20 10 14 10 14 4"></polyline>
+                    <line x1="14" y1="10" x2="21" y2="3"></line>
+                    <line x1="3" y1="21" x2="10" y2="14"></line>
+                </svg>
+                <span>Rejoin Tab 1</span>
+            </button>
         </div>
 
         <!-- Top Navigation / Header -->
@@ -97,6 +101,17 @@
                     <span>Split to 2 Tabs</span>
                 </button>
 
+                <!-- Small Merge Back Button for Tab 1 (Replaces full banner) -->
+                <button id="rejoinBtn" class="nav-btn merge-tab-btn hidden" title="Merge secondary tab back into this single window">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="4 14 10 14 10 20"></polyline>
+                        <polyline points="20 10 14 10 14 4"></polyline>
+                        <line x1="14" y1="10" x2="21" y2="3"></line>
+                        <line x1="3" y1="21" x2="10" y2="14"></line>
+                    </svg>
+                    <span>Merge Tabs</span>
+                </button>
+
                 <!-- Source Loader Button -->
                 <button id="sourceModalBtn" class="nav-btn" title="Choose Video Sources (Files or URLs)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -125,6 +140,41 @@
 
         <!-- Video Display Stage -->
         <main class="video-stage" id="videoStage">
+            
+            <!-- Upload Landing Screen (Initial First Screen) -->
+            <div class="upload-landing-view" id="uploadLandingView">
+                <div class="upload-landing-card" id="landingDropzone">
+                    <div class="upload-landing-icon">
+                        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                    </div>
+                    <h2 class="upload-landing-title">Load Lecture Files</h2>
+                    <p class="upload-landing-desc">Drag & drop your downloaded MP4 videos and SRT subtitles</p>
+                    <div class="upload-badge-row">
+                        <span class="upload-badge">MP4 Videos</span>
+                        <span class="upload-badge">SRT / VTT Subtitles</span>
+                        <span class="upload-badge">Auto Dual-Screen Detection</span>
+                    </div>
+                    <div class="upload-landing-actions">
+                        <button class="btn btn-primary" id="landingSelectBtn" type="button">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                            <span>Browse Files</span>
+                        </button>
+                        <button class="btn btn-outline" id="landingUrlBtn" type="button">
+                            <span>Direct URLs</span>
+                        </button>
+                    </div>
+                    <input type="file" id="landingFileInput" multiple accept="video/*,.srt,.vtt" class="hidden-file-input">
+                    <div class="upload-landing-footer">
+                        <span>Drop 1 video for Single View, or 2 videos for Synchronized Dual View</span>
+                    </div>
+                </div>
+            </div>
             
             <!-- Stream 1 (Primary / Camera) Container -->
             <div class="video-container" id="streamContainer1">
@@ -249,6 +299,7 @@
                         <span id="currentTime">00:00:00</span>
                         <span class="time-separator">/</span>
                         <span id="totalDuration">00:00:00</span>
+                        <span id="timeLeft" class="time-left" title="Real time remaining considering playback speed">(-00:00:00 left)</span>
                     </div>
 
                     <div class="sync-status" id="syncStatus" title="Playback Sync Status">
@@ -278,6 +329,10 @@
 
                 <!-- Right: Playback Speed, Layout indicator, Fullscreen -->
                 <div class="ctrl-group right">
+                    <!-- CC Subtitles Button -->
+                    <button id="ccBtn" class="ctrl-btn cc-btn hidden" title="Toggle Subtitles / Captions (C)">
+                        <span>CC</span>
+                    </button>
                     <div class="speed-selector">
                         <button id="speedBtn" class="ctrl-btn speed-btn" title="Playback Speed (Hotkey: [ / ])">
                             <span id="speedLabel">1.0x</span>

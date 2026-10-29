@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const retryScanBtn = document.getElementById('retryScanBtn');
 
     // Native in-page pop-out elements
+    const nativePopoutSection = document.getElementById('nativePopoutSection');
     const nativePopoutScreenBtn = document.getElementById('nativePopoutScreenBtn');
     const nativePopoutCameraBtn = document.getElementById('nativePopoutCameraBtn');
 
@@ -139,6 +140,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         sessionTitle.title = data.title || "";
         streamCountBadge.textContent = `${streams.length} Screen${streams.length === 1 ? '' : 's'}`;
 
+        // Don't ask to pop out anything in case there is only one stream
+        if (nativePopoutSection) {
+            if (streams.length > 1) {
+                nativePopoutSection.classList.remove('hidden');
+            } else {
+                nativePopoutSection.classList.add('hidden');
+            }
+        }
+
         // Closed Captions & Transcripts
         if (data.captions && data.captions.hasCaptions) {
             captionsSection.classList.remove('hidden');
@@ -246,6 +256,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                         showToast(`Downloading ${stream.title}...`);
                     }
                 });
+
+                // Auto-download SRT if exists
+                if (data.captions && data.captions.hasCaptions && data.captions.srt) {
+                    const cleanTitle = (data.title || "Lecture").replace(/[<>:"\/\\|?*\x00-\x1F]/g, '_').trim().slice(0, 100);
+                    setTimeout(() => {
+                        downloadTextFile(data.captions.srt, `${cleanTitle}.srt`, 'application/x-subrip');
+                    }, 500);
+                }
             });
 
             streamList.appendChild(item);
@@ -261,6 +279,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     showToast(`Started downloading ${streams.length} screens!`);
                 }
             });
+
+            // Auto-download SRT if exists
+            if (data.captions && data.captions.hasCaptions && data.captions.srt) {
+                const cleanTitle = (data.title || "Lecture").replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').trim().slice(0, 100);
+                setTimeout(() => {
+                    downloadTextFile(data.captions.srt, `${cleanTitle}.srt`, 'application/x-subrip');
+                }, 800);
+            }
         };
 
         // Watch in Smart Viewer button (Live streaming, no download)
@@ -332,6 +358,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                             filename: data.name
                         }]
                     });
+
+                // Auto-download SRT if exists
+                if (data.captions && data.captions.hasCaptions && data.captions.srt) {
+                    const cleanTitle = (data.title || "Lecture").replace(/[<>:"\/\\|?*\x00-\x1F]/g, '_').trim().slice(0, 100);
+                    setTimeout(() => {
+                        downloadTextFile(data.captions.srt, `${cleanTitle}.srt`, 'application/x-subrip');
+                    }, 500);
+                }
                 } else {
                     showView(noStreamsView);
                 }

@@ -114,7 +114,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const splitBanner = document.getElementById('splitBanner');
     const splitBannerText = document.getElementById('splitBannerText');
     const rejoinBtn = document.getElementById('rejoinBtn');
+    const secondaryFloatingMerge = document.getElementById('secondaryFloatingMerge');
+    const secondaryRejoinBtn = document.getElementById('secondaryRejoinBtn');
     const toast = document.getElementById('viewerToast');
+    const timeLeftEl = document.getElementById('timeLeft');
+    const ccBtn = document.getElementById('ccBtn');
+    const uploadLandingView = document.getElementById('uploadLandingView');
+    const landingDropzone = document.getElementById('landingDropzone');
+    const landingSelectBtn = document.getElementById('landingSelectBtn');
+    const landingUrlBtn = document.getElementById('landingUrlBtn');
+    const landingFileInput = document.getElementById('landingFileInput');
+    const presetsBar = document.getElementById('presetsBar');
 
     // Modals & Sources
     const sourceModalBtn = document.getElementById('sourceModalBtn');
@@ -296,6 +306,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const duration = getDuration();
         currentTimeEl.textContent = formatTime(currentTime);
         totalDurationEl.textContent = formatTime(duration);
+
+        if (timeLeftEl && duration > 0) {
+            const rate = video1.playbackRate || 1.0;
+            const remainingSec = Math.max(0, duration - currentTime);
+            const speedAdjustedSec = remainingSec / rate;
+            timeLeftEl.textContent = `(-${formatTime(speedAdjustedSec)} left)`;
+        }
 
         if (duration > 0) {
             const percent = (currentTime / duration) * 100;
@@ -563,9 +580,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         body.classList.add('split-mode-secondary');
         document.title = "[Tab 2 - Multi-Monitor] Screen View";
 
-        splitBanner.classList.remove('hidden');
-        splitBannerText.textContent = "Synced with Tab 1 (Multi-Monitor Mode Active)";
-        rejoinBtn.textContent = "Close & Rejoin Tab 1";
+        if (secondaryFloatingMerge) secondaryFloatingMerge.classList.remove('hidden');
+        if (uploadLandingView) uploadLandingView.classList.add('hidden');
 
         syncChannel = new BroadcastChannel(`panopto_sync_${sessionId}`);
 
@@ -624,10 +640,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         };
 
-        rejoinBtn.addEventListener('click', () => {
-            syncChannel.postMessage({ type: 'REJOIN' });
-            window.close();
-        });
+        if (secondaryRejoinBtn) {
+            secondaryRejoinBtn.addEventListener('click', () => {
+                syncChannel.postMessage({ type: 'REJOIN' });
+                window.close();
+            });
+        }
+        if (rejoinBtn) {
+            rejoinBtn.addEventListener('click', () => {
+                syncChannel.postMessage({ type: 'REJOIN' });
+                window.close();
+            });
+        }
 
     } else {
         // TAB 1: MASTER / STANDALONE MODE
@@ -641,9 +665,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             syncChannel = new BroadcastChannel(`panopto_sync_${sessionId}`);
 
             body.classList.add('split-mode-master');
-            splitBanner.classList.remove('hidden');
-            splitBannerText.textContent = "Split Tab Mode: Stream 2 is playing in Tab 2 on your second monitor.";
-            rejoinBtn.textContent = "Merge Back into Single Tab";
+            if (rejoinBtn) rejoinBtn.classList.remove('hidden');
 
             // If local files, store in IndexedDB
             let hasFiles = (stream1Data && stream1Data.file) || (stream2Data && stream2Data.file);
@@ -715,7 +737,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         function mergeBackToSingleTab() {
             body.classList.remove('split-mode-master');
-            splitBanner.classList.add('hidden');
+            if (rejoinBtn) rejoinBtn.classList.add('hidden');
             if (syncHeartbeatInterval) clearInterval(syncHeartbeatInterval);
             setPreset(currentPreset);
 
@@ -759,39 +781,202 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateAudioRouting();
     }
 
-    // Pair files automatically
+    // Helper: Convert SRT text to WebVTT format
+    function srtToVtt(srtText) {
+        if (!srtText) return "";
+        let clean = srtText.replace(/\r\n/g, '\n').trim();
+        return "WEBVTT\n\n" + clean.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
+    }
+
+    // Attach Subtitle track to video
+    function loadSubtitleFile(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const raw = e.target.result;
+            const vtt = file.name.endsWith('.vtt') ? raw : srtToVtt(raw);
+            const blob = new Blob([vtt], { type: 'text/vtt' });
+            const url = URL.createObjectURL(blob);
+
+            // Remove existing tracks on video1
+            const oldTracks = video1.querySelectorAll('track');
+            oldTracks.forEach(t => t.remove());
+
+            const track = document.createElement('track');
+            track.kind = 'subtitles';
+            track.label = 'English Subtitles';
+            track.srclang = 'en';
+            track.src = url;
+            track.default = true;
+            video1.appendChild(track);
+
+            if (video1.textTracks && video1.textTracks[0]) {
+                video1.textTracks[0].mode = 'showing';
+            }
+
+            if (ccBtn) {
+                ccBtn.classList.remove('hidden');
+                ccBtn.classList.add('active');
+            }
+            showToast("Subtitles loaded successfully!");
+        };
+        reader.readAsText(file);
+    }
+
+    // Pair files automatically (MP4 videos and SRT subtitles)
     function handleMultipleFiles(files) {
         if (!files || files.length === 0) return;
 
-        let cameraFile = null;
-        let screenFile = null;
+        const fileList = Array.from(files);
+        const videoFiles = [];
+        const subtitleFiles = [];
 
-        Array.from(files).forEach(f => {
+        fileList.forEach(f => {
             const name = f.name.toLowerCase();
-            if (name.includes('presenter') || name.includes('camera') || name.includes('cam')) {
-                cameraFile = f;
-            } else if (name.includes('screen') || name.includes('dv') || name.includes('slide')) {
-                screenFile = f;
+            if (name.endsWith('.srt') || name.endsWith('.vtt')) {
+                subtitleFiles.push(f);
+            } else if (f.type.startsWith('video/') || name.endsWith('.mp4') || name.endsWith('.webm') || name.endsWith('.m3u8')) {
+                videoFiles.push(f);
             }
         });
 
-        // Fallbacks
-        if (!cameraFile && files[0]) cameraFile = files[0];
-        if (!screenFile && files[1]) screenFile = files[1];
-
-        if (cameraFile) {
-            loadStream(1, { title: cameraFile.name, file: cameraFile });
-            sessionHeading.textContent = cameraFile.name.replace(/[-_]?(presenter|camera|screen).*/i, '');
-        }
-        if (screenFile) {
-            loadStream(2, { title: screenFile.name, file: screenFile });
+        if (videoFiles.length === 0 && subtitleFiles.length > 0) {
+            loadSubtitleFile(subtitleFiles[0]);
+            return;
         }
 
-        sourceModal.classList.add('hidden');
-        showToast("Loaded both video files successfully!");
+        if (videoFiles.length === 0) {
+            showToast("No MP4 or video files found in selection");
+            return;
+        }
+
+        // Hide upload landing screen & modal
+        if (uploadLandingView) uploadLandingView.classList.add('hidden');
+        if (sourceModal) sourceModal.classList.add('hidden');
+
+        // Check if only 1 video file was provided
+        if (videoFiles.length === 1) {
+            const vid = videoFiles[0];
+            loadStream(1, { title: vid.name, file: vid });
+            sessionHeading.textContent = vid.name.replace(/\.[^/.]+$/, "");
+
+            // Single video mode: hide multi-screen layout controls
+            setPreset('preset-single');
+            if (presetsBar) presetsBar.style.display = 'none';
+            if (splitTabsBtn) splitTabsBtn.style.display = 'none';
+            if (swapBtn) swapBtn.style.display = 'none';
+            if (splitDivider) splitDivider.style.display = 'none';
+            if (container2) container2.style.display = 'none';
+
+            showToast("Playing in Single Video Mode");
+        } else {
+            // 2 or more videos: multi-screen mode
+            if (presetsBar) presetsBar.style.display = '';
+            if (splitTabsBtn) splitTabsBtn.style.display = '';
+            if (swapBtn) swapBtn.style.display = '';
+            if (splitDivider) splitDivider.style.display = '';
+            if (container2) container2.style.display = '';
+
+            let cameraFile = null;
+            let screenFile = null;
+
+            videoFiles.forEach(f => {
+                const name = f.name.toLowerCase();
+                if (name.includes('presenter') || name.includes('camera') || name.includes('cam')) {
+                    cameraFile = f;
+                } else if (name.includes('screen') || name.includes('dv') || name.includes('slide')) {
+                    screenFile = f;
+                }
+            });
+
+            if (!cameraFile && videoFiles[0]) cameraFile = videoFiles[0];
+            if (!screenFile && videoFiles[1]) screenFile = videoFiles[1];
+
+            if (cameraFile) {
+                loadStream(1, { title: cameraFile.name, file: cameraFile });
+                sessionHeading.textContent = cameraFile.name.replace(/[-_]?(presenter|camera|screen).*/i, '');
+            }
+            if (screenFile) {
+                loadStream(2, { title: screenFile.name, file: screenFile });
+            }
+
+            setPreset('preset-split-equal');
+            showToast("Loaded both video feeds for Synchronized Dual View!");
+        }
+
+        // Auto load subtitles if included
+        if (subtitleFiles.length > 0) {
+            loadSubtitleFile(subtitleFiles[0]);
+        }
     }
 
     // Drop on empty container 1
+    // CC Subtitles toggle
+    if (ccBtn) {
+        ccBtn.addEventListener('click', () => {
+            if (video1.textTracks && video1.textTracks[0]) {
+                const track = video1.textTracks[0];
+                const isShowing = track.mode === 'showing';
+                track.mode = isShowing ? 'hidden' : 'showing';
+                ccBtn.classList.toggle('active', !isShowing);
+                showToast(!isShowing ? "Subtitles ON" : "Subtitles OFF");
+            } else {
+                showToast("No subtitles loaded");
+            }
+        });
+    }
+
+    // Landing screen controls
+    if (landingDropzone) {
+        landingDropzone.addEventListener('click', () => landingFileInput.click());
+        landingFileInput.addEventListener('change', (e) => handleMultipleFiles(e.target.files));
+
+        ['dragenter', 'dragover'].forEach(name => {
+            landingDropzone.addEventListener(name, (e) => {
+                e.preventDefault();
+                landingDropzone.classList.add('drag-hover');
+            });
+        });
+        ['dragleave', 'drop'].forEach(name => {
+            landingDropzone.addEventListener(name, (e) => {
+                e.preventDefault();
+                landingDropzone.classList.remove('drag-hover');
+            });
+        });
+        landingDropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            landingDropzone.classList.remove('drag-hover');
+            if (e.dataTransfer && e.dataTransfer.files) {
+                handleMultipleFiles(e.dataTransfer.files);
+            }
+        });
+    }
+
+    if (landingSelectBtn) {
+        landingSelectBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            landingFileInput.click();
+        });
+    }
+
+    if (landingUrlBtn) {
+        landingUrlBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sourceModal.classList.remove('hidden');
+            const urlTabBtn = document.querySelector('.modal-tab-btn[data-tab="streamUrlsTab"]');
+            if (urlTabBtn) urlTabBtn.click();
+        });
+    }
+
+    // Item 4: Pressing anywhere on viewer stops / resumes video
+    videoStage.addEventListener('click', (e) => {
+        if (e.target.closest('button, input, select, .split-divider, .stream-audio-ctrl, .upload-landing-card, .modal-card, .stream-header-overlay')) {
+            return;
+        }
+        if (isDraggingDivider) return;
+        togglePlayPause();
+    });
+
     dropEmpty1.addEventListener('click', () => fileInput1.click());
     fileInput1.addEventListener('change', (e) => {
         if (e.target.files && e.target.files[0]) {
@@ -853,6 +1038,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         const u2 = urlInput2.value.trim();
         if (u1) loadStream(1, { title: 'Camera Stream', url: u1 });
         if (u2) loadStream(2, { title: 'Screen Stream', url: u2 });
+        if (uploadLandingView) uploadLandingView.classList.add('hidden');
+        if (u1 && !u2) {
+            setPreset('preset-single');
+            if (presetsBar) presetsBar.style.display = 'none';
+            if (splitTabsBtn) splitTabsBtn.style.display = 'none';
+            if (swapBtn) swapBtn.style.display = 'none';
+            if (splitDivider) splitDivider.style.display = 'none';
+            if (container2) container2.style.display = 'none';
+        } else {
+            if (presetsBar) presetsBar.style.display = '';
+            if (splitTabsBtn) splitTabsBtn.style.display = '';
+            if (swapBtn) swapBtn.style.display = '';
+            if (splitDivider) splitDivider.style.display = '';
+            if (container2) container2.style.display = '';
+        }
         sourceModal.classList.add('hidden');
         showToast("Loaded remote stream URLs!");
     });
@@ -922,6 +1122,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             case 'KeyS':
                 swapBtn.click();
                 break;
+            case 'KeyC':
+                if (ccBtn) ccBtn.click();
+                break;
             case 'KeyF':
                 fullscreenBtn.click();
                 break;
@@ -960,6 +1163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const s = res.viewerSession;
                 if (s.title) sessionHeading.textContent = s.title;
 
+                                if (uploadLandingView) uploadLandingView.classList.add('hidden');
                 const primary = s.streams.find(st => st.type === 'primary');
                 const secondary = s.streams.find(st => st.type === 'secondary');
                 const podcast = s.streams.find(st => st.type === 'podcast');
@@ -975,6 +1179,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     loadStream(2, s.streams[1]);
                 } else if (s.streams[0]) {
                     loadStream(1, s.streams[0]);
+                    setPreset('preset-single');
+                    if (presetsBar) presetsBar.style.display = 'none';
+                    if (splitTabsBtn) splitTabsBtn.style.display = 'none';
+                    if (swapBtn) swapBtn.style.display = 'none';
+                    if (splitDivider) splitDivider.style.display = 'none';
+                    if (container2) container2.style.display = 'none';
                 }
 
                 showToast(`Loaded lecture: ${s.title || "Panopto recording"}`);
