@@ -194,10 +194,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         isPlaying = true;
         updatePlayPauseIcons();
 
+        const hasV1 = Boolean(video1.src || video1.srcObject || video1.currentSrc);
+        const hasV2 = Boolean(video2.src || video2.srcObject || video2.currentSrc);
+
         try {
-            if (!isSecondaryTab && video1.src) await video1.play();
-            if (!isMasterTab && video2.src) await video2.play();
-            if (isMasterTab && !isSecondaryTab && !body.classList.contains('split-mode-master') && video2.src) {
+            if (!isSecondaryTab && hasV1) await video1.play();
+            if (!isMasterTab && hasV2) await video2.play();
+            if (isMasterTab && !isSecondaryTab && !body.classList.contains('split-mode-master') && hasV2) {
                 await video2.play();
             }
         } catch (e) {
@@ -233,8 +236,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function seekBoth(time, fromRemote = false) {
         const clamped = Math.max(0, Math.min(time, getDuration()));
-        if (video1.src) video1.currentTime = clamped;
-        if (video2.src) video2.currentTime = clamped;
+        const hasV1 = Boolean(video1.src || video1.srcObject || video1.currentSrc);
+        const hasV2 = Boolean(video2.src || video2.srcObject || video2.currentSrc);
+        if (hasV1) video1.currentTime = clamped;
+        if (hasV2) video2.currentTime = clamped;
         updateTimelineUI(clamped);
 
         if (!fromRemote && syncChannel) {
@@ -284,10 +289,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Drift Detection & Synchronizer (Master-Slave alignment)
     function monitorSync() {
         if (!isMasterTab && !isSecondaryTab) {
-            // Both videos in single window
-            if (video1.src && video2.src && !video1.paused && !video2.paused) {
+            const hasV1 = Boolean(video1.src || video1.srcObject || video1.currentSrc);
+            const hasV2 = Boolean(video2.src || video2.srcObject || video2.currentSrc);
+            if (hasV1 && hasV2 && !video1.paused && !video2.paused) {
                 const diff = Math.abs(video1.currentTime - video2.currentTime);
-                if (diff > 0.15) {
+                if (diff > 0.25) {
                     syncDot.className = 'sync-dot syncing';
                     syncLabel.textContent = 'Re-aligning...';
                     video2.currentTime = video1.currentTime;
@@ -760,25 +766,102 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!streamObj) return;
 
         let srcUrl = streamObj.url;
-        if (streamObj.file) {
+        const isFile = Boolean(streamObj.file);
+        if (isFile) {
             srcUrl = URL.createObjectURL(streamObj.file);
         }
 
-        if (index === 1) {
-            stream1Data = streamObj;
-            video1.src = srcUrl;
-            dropEmpty1.classList.add('hidden');
-            document.getElementById('streamTitle1').textContent = streamObj.title || 'Presenter / Camera';
-            video1.load();
-        } else if (index === 2) {
-            stream2Data = streamObj;
-            video2.src = srcUrl;
-            dropEmpty2.classList.add('hidden');
-            document.getElementById('streamTitle2').textContent = streamObj.title || 'Screen / Presentation';
-            video2.load();
+        const isHls = !isFile && srcUrl && srcUrl.includes('.m3u8');
+        const targetVideo = (index === 1) ? video1 : video2;
+        const dropEmpty = (index === 1) ? dropEmpty1 : dropEmpty2;
+        const streamTitle = (index === 1) ? document.getElementById('streamTitle1') : document.getElementById('streamTitle2');
+
+        // Destroy previous HLS instance if any
+        if (index === 1 && hlsInstance1) {
+            try { hlsInstance1.destroy(); } catch(e) {}
+            hlsInstance1 = null;
+        } else if (index === 2 && hlsInstance2) {
+            try { hlsInstance2.destroy(); } catch(e) {}
+            hlsInstance2 = null;
+        }
+
+        if (index === 1) stream1Data = streamObj;
+        if (index === 2) stream2Data = streamObj;
+
+        dropEmpty.classList.add('hidden');
+        if (streamTitle) streamTitle.textContent = streamObj.title || (index === 1 ? 'Presenter / Camera' : 'Screen / Presentation');
+
+        if (isHls && typeof Hls !== 'undefined' && Hls.isSupported()) {
+            console.log(`[Smart Viewer] Loading HLS stream ${index}:`, srcUrl);
+            const hls = new Hls({
+                enableWorker: true,
+                lowLatencyMode: false,
+                xhrSetup: function(xhr, url) {
+                    xhr.withCredentials = true; // Include authentication cookies for Panopto
+                }
+            });
+
+            if (index === 1) hlsInstance1 = hls;
+            if (index === 2) hlsInstance2 = hls;
+
+            hls.loadSource(srcUrl);
+            hls.attachMedia(targetVideo);
+
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                console.log(`[Smart Viewer] HLS manifest parsed for stream ${index}`);
+                totalDurationEl.textContent = formatTime(getDuration());
+            });
+
+            hls.on(Hls.Events.ERROR, (event, data) => {
+                console.warn(`[Smart Viewer] HLS error on stream ${index}:`, data);
+                if (data.fatal) {
+                    switch (data.type) {
+                        case Hls.ErrorTypes.NETWORK_ERROR:
+                            hls.startLoad();
+                            break;
+                        case Hls.ErrorTypes.MEDIA_ERROR:
+                            hls.recoverMediaError();
+                            break;
+                        default:
+                            hls.destroy();
+                            break;
+                    }
+                }
+            });
+        } else {
+            console.log(`[Smart Viewer] Loading direct stream ${index}:`, srcUrl);
+            targetVideo.src = srcUrl;
+            targetVideo.load();
         }
 
         updateAudioRouting();
+    }
+
+    // Attach Subtitle from text directly (e.g. from viewerSession)
+    function loadSubtitleText(vttText) {
+        if (!vttText) return;
+        const blob = new Blob([vttText], { type: 'text/vtt' });
+        const url = URL.createObjectURL(blob);
+
+        const oldTracks = video1.querySelectorAll('track');
+        oldTracks.forEach(t => t.remove());
+
+        const track = document.createElement('track');
+        track.kind = 'subtitles';
+        track.label = 'English Subtitles';
+        track.srclang = 'en';
+        track.src = url;
+        track.default = true;
+        video1.appendChild(track);
+
+        if (video1.textTracks && video1.textTracks[0]) {
+            video1.textTracks[0].mode = 'showing';
+        }
+
+        if (ccBtn) {
+            ccBtn.classList.remove('hidden');
+            ccBtn.classList.add('active');
+        }
     }
 
     // Helper: Convert SRT text to WebVTT format
@@ -1043,17 +1126,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (uploadLandingView) uploadLandingView.classList.add('hidden');
         if (u1 && !u2) {
             setPreset('preset-single');
-            if (presetsBar) presetsBar.style.display = 'none';
-            if (splitTabsBtn) splitTabsBtn.style.display = 'none';
-            if (swapBtn) swapBtn.style.display = 'none';
-            if (splitDivider) splitDivider.style.display = 'none';
-            if (container2) container2.style.display = 'none';
+            [presetsBar, splitTabsBtn, swapBtn, splitDivider, container2].forEach(el => {
+                if (el) { el.classList.add('hidden'); el.style.display = 'none'; }
+            });
         } else {
-            if (presetsBar) presetsBar.style.display = '';
-            if (splitTabsBtn) splitTabsBtn.style.display = '';
-            if (swapBtn) swapBtn.style.display = '';
-            if (splitDivider) splitDivider.style.display = '';
-            if (container2) container2.style.display = '';
+            setPreset('preset-split-equal');
+            [presetsBar, splitTabsBtn, swapBtn, splitDivider, container2].forEach(el => {
+                if (el) { el.classList.remove('hidden'); el.style.display = ''; }
+            });
         }
         sourceModal.classList.add('hidden');
         showToast("Loaded remote stream URLs!");
@@ -1165,28 +1245,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const s = res.viewerSession;
                 if (s.title) sessionHeading.textContent = s.title;
 
-                                if (uploadLandingView) uploadLandingView.classList.add('hidden');
-                const primary = s.streams.find(st => st.type === 'primary');
-                const secondary = s.streams.find(st => st.type === 'secondary');
-                const podcast = s.streams.find(st => st.type === 'podcast');
+                if (uploadLandingView) uploadLandingView.classList.add('hidden');
 
-                const hasTwoStreams = (primary && secondary) || (podcast && secondary) || (s.streams && s.streams.length >= 2);
+                const primary = s.streams && s.streams.find(st => st.type === 'primary');
+                const secondary = s.streams && s.streams.find(st => st.type === 'secondary');
+                const hasTwoStreams = Boolean((primary && secondary) || (s.streams && s.streams.length >= 2));
 
                 if (hasTwoStreams) {
                     [presetsBar, splitTabsBtn, swapBtn, splitDivider, container2].forEach(el => {
                         if (el) { el.classList.remove('hidden'); el.style.display = ''; }
                     });
 
-                    if (primary && secondary) {
-                        loadStream(1, primary);
-                        loadStream(2, secondary);
-                    } else if (podcast && secondary) {
-                        loadStream(1, podcast);
-                        loadStream(2, secondary);
-                    } else if (s.streams[0] && s.streams[1]) {
-                        loadStream(1, s.streams[0]);
-                        loadStream(2, s.streams[1]);
-                    }
+                    const st1 = primary || s.streams[0];
+                    const st2 = secondary || s.streams[1];
+                    loadStream(1, st1);
+                    loadStream(2, st2);
                     setPreset('preset-split-equal');
                 } else if (s.streams && s.streams[0]) {
                     [presetsBar, splitTabsBtn, swapBtn, splitDivider, container2].forEach(el => {
@@ -1196,11 +1269,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     setPreset('preset-single');
                 }
 
+                // Auto-load subtitles if Panopto session has them
+                if (s.captions && s.captions.hasCaptions && (s.captions.vtt || s.captions.srt)) {
+                    const vtt = s.captions.vtt || srtToVtt(s.captions.srt);
+                    loadSubtitleText(vtt);
+                }
+
                 showToast(`Loaded lecture: ${s.title || "Panopto recording"}`);
-                // Clear session from storage so next time viewer opens blank if desired
                 chrome.storage.local.remove(['viewerSession']);
             }
         });
     }
-
 });

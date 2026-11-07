@@ -20,5 +20,8 @@
 		"downloads",
 		"scripting",
 		"storage"
+	],
+	"host_permissions": [
+		"*://*/*"
 	]
 }

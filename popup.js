@@ -142,8 +142,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // Subtitles handled automatically on video download
-
         streamList.innerHTML = '';
 
         streams.forEach((stream) => {
@@ -151,19 +149,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             item.className = 'stream-item';
 
             const isPrimary = stream.type === 'primary';
-            const isPodcast = stream.type === 'podcast';
-            const iconType = isPodcast ? 'podcast' : (isPrimary ? 'primary' : 'secondary');
+            const iconType = isPrimary ? 'primary' : 'secondary';
 
             let iconSvg = '';
-            if (isPodcast) {
-                iconSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>`;
-            } else if (isPrimary) {
+            if (isPrimary) {
                 iconSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>`;
             } else {
                 iconSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>`;
             }
 
-            const format = stream.url.includes('.m3u8') ? 'HLS Playlist' : 'MP4 Video';
+            const format = (stream.downloadUrl && stream.downloadUrl.includes('.mp4')) ? 'MP4 Video' : (stream.url.includes('.m3u8') ? 'HLS Playlist' : 'MP4 Video');
 
             item.innerHTML = `
                 <div class="stream-details">
@@ -209,9 +204,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const dlBtn = item.querySelector('.stream-download-btn');
             dlBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                const targetUrl = stream.downloadUrl || stream.url;
                 chrome.runtime.sendMessage({
                     action: 'DOWNLOAD_STREAM',
-                    url: stream.url,
+                    url: targetUrl,
                     filename: stream.filename,
                     saveAs: true
                 }, (response) => {
@@ -233,13 +229,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         // Download All button
+        const dlSpan = downloadAllBtn.querySelector('span');
+        if (dlSpan) {
+            dlSpan.textContent = streams.length === 1 ? 'Download Screen (+ SRT)' : `Download All Screens (${streams.length}) (+ SRT)`;
+        }
+
         downloadAllBtn.onclick = () => {
+            const downloadItems = streams.map(s => ({
+                url: s.downloadUrl || s.url,
+                filename: s.filename
+            }));
+
             chrome.runtime.sendMessage({
                 action: 'DOWNLOAD_ALL',
-                streams: streams
+                streams: downloadItems
             }, (response) => {
                 if (response && response.success) {
-                    showToast(`Started downloading ${streams.length} screens!`);
+                    showToast(`Started downloading ${streams.length} screen${streams.length === 1 ? '' : 's'}!`);
                 }
             });
 
@@ -281,8 +287,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const path = url.pathname.toLowerCase();
             const isPanopto = host.includes('panopto') || path.includes('/panopto/');
 
-
-
             if (!isPanopto) {
                 showView(nonPanoptoView);
                 return;
@@ -319,36 +323,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const data = results[0].result;
                 if (data.streams && data.streams.length > 0) {
                     renderStreams(data);
-                } else if (data.videoUrl) {
-                    renderStreams({
-                        title: data.name.replace(/\.mp4$/i, ''),
-                        streams: [{
-                            id: 'stream-0',
-                            title: 'Primary Video',
-                            type: 'primary',
-                            url: data.videoUrl,
-                            filename: data.name
-                        }]
-                    });
-
-                // Auto-download SRT if exists
-                if (data.captions && data.captions.hasCaptions && data.captions.srt) {
-                    const cleanTitle = (data.title || "Lecture").replace(/[<>:"\/\\|?*\x00-\x1F]/g, '_').trim().slice(0, 100);
-                    setTimeout(() => {
-                        downloadTextFile(data.captions.srt, `${cleanTitle}.srt`, 'application/x-subrip');
-                    }, 500);
-                }
                 } else {
                     showView(noStreamsView);
                 }
             } else {
                 showView(noStreamsView);
             }
+
         } catch (err) {
-            console.error("Popup scan failed:", err);
+            console.error("Scanning error:", err);
             showView(noStreamsView);
         }
     }
 
+    // Initialize
     scanActiveTab();
 });
