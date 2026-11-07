@@ -126,12 +126,10 @@
 
             // Find direct MP4 download link if available
             let downloadUrl = primaryUrl;
-            if (isHls) {
-                if (s.PublicObjectDownloadUrl && s.PublicObjectDownloadUrl.includes('.mp4')) {
-                    downloadUrl = makeAbsolute(s.PublicObjectDownloadUrl);
-                } else if (podcastUrl && podcastUrl.includes('.mp4')) {
-                    downloadUrl = makeAbsolute(podcastUrl);
-                }
+            if (s.PublicObjectDownloadUrl) {
+                downloadUrl = makeAbsolute(s.PublicObjectDownloadUrl);
+            } else if (isHls && podcastUrl && podcastUrl.includes('.mp4')) {
+                downloadUrl = makeAbsolute(podcastUrl);
             }
 
             streams.push({
@@ -173,8 +171,10 @@
                 const pUrl = makeAbsolute(primaryStream.StreamUrl || primaryStream.PublicObjectDownloadUrl || primaryStream.StreamHttpUrl || primaryStream.Url);
                 const isHls = pUrl.includes('.m3u8');
                 let dlUrl = pUrl;
-                if (isHls && primaryStream.PublicObjectDownloadUrl && primaryStream.PublicObjectDownloadUrl.includes('.mp4')) {
+                if (primaryStream.PublicObjectDownloadUrl) {
                     dlUrl = makeAbsolute(primaryStream.PublicObjectDownloadUrl);
+                } else if (isHls && podcastUrl && podcastUrl.includes('.mp4')) {
+                    dlUrl = makeAbsolute(podcastUrl);
                 }
 
                 streams.push({
@@ -194,7 +194,7 @@
                 const sUrl = makeAbsolute(secondaryStream.StreamUrl || secondaryStream.PublicObjectDownloadUrl || secondaryStream.StreamHttpUrl || secondaryStream.Url);
                 const isHls = sUrl.includes('.m3u8');
                 let dlUrl = sUrl;
-                if (isHls && secondaryStream.PublicObjectDownloadUrl && secondaryStream.PublicObjectDownloadUrl.includes('.mp4')) {
+                if (secondaryStream.PublicObjectDownloadUrl) {
                     dlUrl = makeAbsolute(secondaryStream.PublicObjectDownloadUrl);
                 }
 

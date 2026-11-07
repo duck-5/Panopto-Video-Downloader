@@ -39,14 +39,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         setTimeout(() => toast.classList.add('hidden'), 2600);
     }
 
-    function downloadTextFile(content, filename, mimeType = 'text/plain') {
+    function downloadTextFile(content, filename, mimeType = 'text/plain', saveAs = false) {
         if (!content) return;
         const blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
         const url = URL.createObjectURL(blob);
         chrome.downloads.download({
             url: url,
             filename: filename,
-            saveAs: true
+            saveAs: typeof saveAs === 'boolean' ? saveAs : false
         }, (downloadId) => {
             setTimeout(() => URL.revokeObjectURL(url), 10000);
             if (chrome.runtime.lastError) {
@@ -220,7 +220,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (data.captions && data.captions.hasCaptions && data.captions.srt) {
                     const cleanTitle = (data.title || "Lecture").replace(/[<>:"\/\\|?*\x00-\x1F]/g, '_').trim().slice(0, 100);
                     setTimeout(() => {
-                        downloadTextFile(data.captions.srt, `${cleanTitle}.srt`, 'application/x-subrip');
+                        downloadTextFile(data.captions.srt, `${cleanTitle}.srt`, 'application/x-subrip', true);
                     }, 500);
                 }
             });
@@ -253,7 +253,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (data.captions && data.captions.hasCaptions && data.captions.srt) {
                 const cleanTitle = (data.title || "Lecture").replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').trim().slice(0, 100);
                 setTimeout(() => {
-                    downloadTextFile(data.captions.srt, `${cleanTitle}.srt`, 'application/x-subrip');
+                    downloadTextFile(data.captions.srt, `${cleanTitle}.srt`, 'application/x-subrip', false);
                 }, 800);
             }
         };
